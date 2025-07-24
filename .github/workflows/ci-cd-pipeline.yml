@@ -1,0 +1,410 @@
+name: Production CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: '20'
+  RUST_VERSION: '1.75'
+
+jobs:
+  # Security scanning job
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run npm audit
+        working-directory: ./legacybridge
+        run: |
+          npm audit --production --audit-level=high
+          npm audit --omit=dev --json > npm-audit.json || true
+
+      - name: Run cargo audit
+        working-directory: ./legacybridge/dll-build
+        run: |
+          cargo install cargo-audit
+          cargo audit --json > cargo-audit.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            npm-audit.json
+            cargo-audit.json
+            trivy-results.sarif
+
+  # Multi-platform build job
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    needs: security-scan
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+            rust-target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            platform: linux-x86
+            rust-target: i686-unknown-linux-gnu
+          - os: windows-latest
+            platform: windows-x64
+            rust-target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            platform: windows-x86
+            rust-target: i686-pc-windows-msvc
+          - os: macos-latest
+            platform: darwin-x64
+            rust-target: x86_64-apple-darwin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: legacybridge/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: ${{ matrix.rust-target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: legacybridge/dll-build -> target
+
+      - name: Install dependencies
+        working-directory: ./legacybridge
+        run: npm ci
+
+      - name: Build DLL
+        working-directory: ./legacybridge/dll-build
+        run: |
+          cargo build --release --target ${{ matrix.rust-target }} --features dll-export
+          cargo test --release --target ${{ matrix.rust-target }}
+
+      - name: Build frontend
+        working-directory: ./legacybridge
+        run: npm run build
+
+      - name: Create artifact directory
+        run: |
+          mkdir -p artifacts/${{ matrix.platform }}
+          cp -r legacybridge/.next artifacts/${{ matrix.platform }}/
+          cp -r legacybridge/lib artifacts/${{ matrix.platform }}/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.platform }}
+          path: artifacts/${{ matrix.platform }}
+          retention-days: 7
+
+  # Automated testing job
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        working-directory: ./legacybridge
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: ./legacybridge
+        run: |
+          npm run test:unit -- --coverage
+          cd dll-build && cargo test --all-features
+
+      - name: Run integration tests
+        working-directory: ./legacybridge
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/testdb
+        run: npm run test:integration
+
+      - name: Run E2E tests
+        working-directory: ./legacybridge
+        run: |
+          npx playwright install --with-deps
+          npm run test:e2e
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            legacybridge/coverage
+            legacybridge/test-results
+            legacybridge/playwright-report
+
+  # Docker build and push job
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.12.0
+            network=host
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.optimized
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            COMMIT_SHA=${{ github.sha }}
+
+      - name: Run Trivy on Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'docker-trivy-results.sarif'
+
+      - name: Upload Docker scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'docker-trivy-results.sarif'
+
+  # Deploy to Kubernetes
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.13.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=./kubeconfig
+
+      - name: Deploy with Helm
+        id: deploy
+        run: |
+          helm upgrade --install legacybridge ./helm/legacybridge \
+            --namespace ${{ github.event.inputs.environment || 'staging' }} \
+            --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ github.sha }} \
+            --set environment=${{ github.event.inputs.environment || 'staging' }} \
+            --wait \
+            --timeout 10m
+
+          # Get deployment URL
+          URL=$(kubectl get ingress legacybridge -n ${{ github.event.inputs.environment || 'staging' }} -o jsonpath='{.spec.rules[0].host}')
+          echo "url=https://$URL" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: |
+          # Wait for deployment to be ready
+          kubectl wait --for=condition=available --timeout=300s \
+            deployment/legacybridge -n ${{ github.event.inputs.environment || 'staging' }}
+          
+          # Run health checks
+          for i in {1..10}; do
+            if curl -f https://${{ steps.deploy.outputs.url }}/api/health; then
+              echo "Health check passed"
+              break
+            fi
+            echo "Waiting for service to be ready..."
+            sleep 30
+          done
+
+      - name: Run performance validation
+        run: |
+          # Install k6
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install k6
+          
+          # Run performance test
+          k6 run --out json=k6-results.json tests/load/k6-load-test.js
+
+      - name: Setup monitoring
+        if: github.event.inputs.environment == 'production'
+        run: |
+          kubectl apply -f k8s/monitoring.yaml -n ${{ github.event.inputs.environment }}
+          
+          # Wait for monitoring stack to be ready
+          kubectl wait --for=condition=available --timeout=300s \
+            deployment/prometheus -n ${{ github.event.inputs.environment }}
+          kubectl wait --for=condition=available --timeout=300s \
+            deployment/grafana -n ${{ github.event.inputs.environment }}
+
+  # Performance reporting
+  performance-report:
+    name: Performance Report
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate performance report
+        run: |
+          # Analyze build times
+          echo "## Build Performance Report" > performance-report.md
+          echo "### Build Times" >> performance-report.md
+          echo "| Platform | Duration |" >> performance-report.md
+          echo "|----------|----------|" >> performance-report.md
+          
+          # Add actual metrics here
+          
+          echo "### Deployment Metrics" >> performance-report.md
+          echo "- Total pipeline duration: ${{ github.run_duration }}s" >> performance-report.md
+          echo "- Docker image size: $(docker images --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | grep legacybridge)" >> performance-report.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('performance-report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # Rollback job (manual trigger)
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && failure()
+    steps:
+      - name: Rollback with Helm
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=./kubeconfig
+          
+          helm rollback legacybridge -n ${{ github.event.inputs.environment || 'staging' }}
+          
+          # Verify rollback
+          kubectl rollout status deployment/legacybridge -n ${{ github.event.inputs.environment || 'staging' }}

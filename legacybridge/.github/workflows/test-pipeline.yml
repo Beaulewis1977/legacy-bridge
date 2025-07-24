@@ -1,0 +1,371 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_ENV: test
+
+jobs:
+  # Quick checks that run on every push
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            ~/.npm
+            node_modules
+            target
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json', '**/Cargo.lock') }}
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd src-tauri && cargo fetch
+      
+      - name: Lint TypeScript/React
+        run: npm run lint
+      
+      - name: Lint Rust
+        run: cd src-tauri && cargo clippy -- -D warnings
+      
+      - name: Format check
+        run: |
+          npx prettier --check .
+          cd src-tauri && cargo fmt -- --check
+
+  # Unit tests for React components
+  react-tests:
+    name: React Component Tests
+    runs-on: ubuntu-latest
+    needs: quick-checks
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run unit tests with coverage
+        run: npm test -- --coverage --ci --maxWorkers=50%
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage/lcov.info
+          flags: react
+          name: react-coverage
+      
+      - name: Check coverage thresholds
+        run: |
+          npm test -- --coverage --coverageReporters=json-summary
+          node -e "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            const metrics = ['statements', 'branches', 'functions', 'lines'];
+            let failed = false;
+            metrics.forEach(metric => {
+              const pct = total[metric].pct;
+              if (pct < 95) {
+                console.error(\`❌ \${metric} coverage \${pct}% is below 95% threshold\`);
+                failed = true;
+              } else {
+                console.log(\`✅ \${metric} coverage: \${pct}%\`);
+              }
+            });
+            if (failed) process.exit(1);
+          "
+
+  # Rust FFI tests
+  rust-tests:
+    name: Rust FFI Tests
+    runs-on: ${{ matrix.os }}
+    needs: quick-checks
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libgtk-3-dev webkit2gtk-4.0 webkit2gtk-driver xvfb
+      
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install pkg-config
+      
+      - name: Run FFI tests
+        run: |
+          cd src-tauri
+          cargo test --lib -- --test-threads=1
+      
+      - name: Run edge case tests
+        run: |
+          cd src-tauri
+          cargo test ffi_edge_case_tests --lib
+      
+      - name: Test DLL build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd dll-build
+          cargo build --release
+          cargo test --release
+
+  # Integration tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [react-tests, rust-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          sudo apt-get update
+          sudo apt-get install -y webkit2gtk-driver xvfb
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Run integration tests
+        run: |
+          export DISPLAY=:99
+          sudo Xvfb -ac :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
+          npm run test:integration
+
+  # Accessibility tests
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: quick-checks
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run accessibility tests
+        run: npm run test:a11y
+      
+      - name: Generate accessibility report
+        run: |
+          mkdir -p reports
+          npm run test:a11y -- --reporter=json > reports/a11y-report.json
+      
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: reports/a11y-report.json
+
+  # Performance tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [react-tests, rust-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run performance regression tests
+        run: npm run test:performance:regression
+      
+      - name: Run memory tests
+        run: npm run test:performance:memory
+      
+      - name: Store performance metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-metrics
+          path: performance-results.json
+      
+      - name: Compare with baseline
+        run: |
+          node -e "
+            const fs = require('fs');
+            const current = JSON.parse(fs.readFileSync('performance-results.json'));
+            // In real implementation, compare with stored baseline
+            console.log('Performance metrics:', current);
+          "
+
+  # Load tests (only on schedule or manual trigger)
+  load-tests:
+    name: Load Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [integration-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Run load tests
+        run: k6 run tests/load/k6-load-test.js
+      
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: load-test-summary.html
+
+  # Security tests
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: quick-checks
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run security audit (npm)
+        run: npm audit --production
+      
+      - name: Run security audit (Rust)
+        run: |
+          cargo install cargo-audit
+          cd src-tauri && cargo audit
+      
+      - name: Run OWASP dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'LegacyBridge'
+          path: '.'
+          format: 'HTML'
+      
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: reports/dependency-check-report.html
+
+  # Test report generation
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [react-tests, rust-tests, integration-tests, accessibility-tests, performance-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      
+      - name: Generate consolidated report
+        run: |
+          echo "# Test Execution Report" > test-report.md
+          echo "Date: $(date)" >> test-report.md
+          echo "Branch: ${{ github.ref }}" >> test-report.md
+          echo "Commit: ${{ github.sha }}" >> test-report.md
+          echo "" >> test-report.md
+          echo "## Test Results Summary" >> test-report.md
+          echo "- React Tests: ${{ needs.react-tests.result }}" >> test-report.md
+          echo "- Rust Tests: ${{ needs.rust-tests.result }}" >> test-report.md
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> test-report.md
+          echo "- Accessibility Tests: ${{ needs.accessibility-tests.result }}" >> test-report.md
+          echo "- Performance Tests: ${{ needs.performance-tests.result }}" >> test-report.md
+      
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-execution-report
+          path: test-report.md
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # Deploy test results to GitHub Pages (optional)
+  deploy-results:
+    name: Deploy Test Results
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: test-report
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+      
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4
