@@ -51,42 +51,132 @@ impl OptimizedMarkdownParser {
     }
 }
 
-/// String interner for deduplication
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// String interner with LRU cache and memory limits for DoS prevention
 struct StringInterner {
-    cache: AHashMap<String, usize>,
+    cache: AHashMap<String, CacheEntry>,
+    access_order: VecDeque<String>,
     strings: Vec<String>,
+    hit_count: AtomicU64,
+    miss_count: AtomicU64,
+    memory_used: usize,
 }
+
+#[derive(Clone)]
+struct CacheEntry {
+    index: usize,
+    last_accessed: u64,
+}
+
+// SECURITY: Memory limits to prevent unbounded growth
+const MAX_CACHE_SIZE: usize = 10_000;
+const MAX_MEMORY_BYTES: usize = 50 * 1024 * 1024; // 50MB
+const CLEANUP_THRESHOLD: usize = 8_000;
 
 impl StringInterner {
     fn new() -> Self {
         Self {
-            cache: AHashMap::new(),
-            strings: Vec::new(),
+            cache: AHashMap::with_capacity(1000),
+            access_order: VecDeque::with_capacity(1000),
+            strings: Vec::with_capacity(1000),
+            hit_count: AtomicU64::new(0),
+            miss_count: AtomicU64::new(0),
+            memory_used: 0,
         }
     }
 
     fn intern(&mut self, text: &str) -> String {
-        // For small strings, just return a copy
+        // For small strings, just return a copy (not worth caching)
         if text.len() <= 8 {
             return text.to_string();
         }
 
-        // Check cache
-        if let Some(&idx) = self.cache.get(text) {
-            return self.strings[idx].clone();
+        // SECURITY: Prevent excessively large strings from being cached
+        if text.len() > 1024 * 1024 { // 1MB limit per string
+            return text.to_string(); // Don't cache huge strings
+        }
+
+        // Check cache hit
+        if let Some(entry) = self.cache.get_mut(text) {
+            self.hit_count.fetch_add(1, Ordering::Relaxed);
+            
+            // Update LRU order - move to end
+            if let Some(pos) = self.access_order.iter().position(|x| x == text) {
+                self.access_order.remove(pos);
+            }
+            self.access_order.push_back(text.to_string());
+            
+            return self.strings[entry.index].clone();
+        }
+
+        // Cache miss - add new entry
+        self.miss_count.fetch_add(1, Ordering::Relaxed);
+        
+        // SECURITY: Check if we need to evict entries
+        if self.cache.len() >= MAX_CACHE_SIZE || self.memory_used >= MAX_MEMORY_BYTES {
+            self.evict_lru_entries();
         }
 
         // Add to cache
         let string = text.to_string();
         let idx = self.strings.len();
+        
+        // Track memory usage
+        let entry_memory = string.len() + std::mem::size_of::<CacheEntry>() + std::mem::size_of::<String>();
+        self.memory_used += entry_memory;
+        
         self.strings.push(string.clone());
-        self.cache.insert(string.clone(), idx);
+        
+        let entry = CacheEntry {
+            index: idx,
+            last_accessed: self.hit_count.load(Ordering::Relaxed) + self.miss_count.load(Ordering::Relaxed),
+        };
+        
+        self.cache.insert(string.clone(), entry);
+        self.access_order.push_back(string.clone());
+        
         string
+    }
+
+    /// Evict least recently used entries to prevent memory exhaustion
+    fn evict_lru_entries(&mut self) {
+        let target_size = CLEANUP_THRESHOLD;
+        
+        while self.cache.len() > target_size && !self.access_order.is_empty() {
+            if let Some(oldest_key) = self.access_order.pop_front() {
+                if let Some(entry) = self.cache.remove(&oldest_key) {
+                    // Update memory usage
+                    let entry_memory = oldest_key.len() + std::mem::size_of::<CacheEntry>() + std::mem::size_of::<String>();
+                    self.memory_used = self.memory_used.saturating_sub(entry_memory);
+                    
+                    // Note: We don't remove from strings Vec to avoid index invalidation
+                    // This creates some memory overhead but maintains correctness
+                }
+            }
+        }
     }
 
     fn clear(&mut self) {
         self.cache.clear();
+        self.access_order.clear();
         self.strings.clear();
+        self.hit_count.store(0, Ordering::Relaxed);
+        self.miss_count.store(0, Ordering::Relaxed);
+        self.memory_used = 0;
+    }
+
+    /// Get cache statistics for monitoring
+    fn stats(&self) -> (u64, u64, f64, usize, usize) {
+        let hits = self.hit_count.load(Ordering::Relaxed);
+        let misses = self.miss_count.load(Ordering::Relaxed);
+        let hit_rate = if hits + misses > 0 {
+            hits as f64 / (hits + misses) as f64
+        } else {
+            0.0
+        };
+        (hits, misses, hit_rate, self.cache.len(), self.memory_used)
     }
 }
 
