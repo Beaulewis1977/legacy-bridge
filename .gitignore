@@ -1,0 +1,191 @@
+# ===== Repository Root .gitignore =====
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+target/
+out/
+
+# Dependencies
+node_modules/
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Documentation builds
+docs/_build/
+_site/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+
+# Rust
+Cargo.lock
+target/
+**/*.rs.bk
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Coverage reports
+coverage/
+.coverage
+htmlcov/
+.nyc_output/
+
+# Testing
+.pytest_cache/
+test-results/
+playwright-report/
+
+# Compressed files (unless needed)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Binary files (unless needed)
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+
+# Project specific
+legacybridge/node_modules/
+legacybridge/.next/
+legacybridge/out/
+legacybridge/src-tauri/target/
+legacybridge/src-tauri/Cargo.lock
+legacybridge/coverage/
+legacybridge/test-results/
+legacybridge/playwright-report/
+legacybridge/*.log
+legacybridge/*.tmp
+legacybridge/.env.local
+
+# Large files that should use Git LFS if needed
+*.psd
+*.ai
+*.sketch
+*.fig
+*.xd
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates (security)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Package lock files (keep package-lock.json but ignore others)
+yarn.lock
+pnpm-lock.yaml
+Gemfile.lock
+composer.lock
+
+# Cache directories
+.cache/
+.parcel-cache/
+.sass-cache/
+.webpack/
+
+# System files
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.DocumentRevisions-V100
+.fseventsd
+.com.apple.timemachine.donotpresent
+
+# Windows system files
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.history/
+*.vsix
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+auto-save-list
+tramp
+.\#*
+.org-id-locations
+*_archive
+*_flymake.*
+flycheck_*.el
+.projectile
+.dir-locals.el
