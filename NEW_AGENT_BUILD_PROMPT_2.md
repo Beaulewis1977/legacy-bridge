@@ -3,6 +3,8 @@
 ## **Your Mission:**
 Build **LegacyBridge** - a modern, beautiful RTF ↔ Markdown converter for legacy systems using **Next.js + shadcn/ui + Tauri + Rust**.
 
+### documents that MUST be read: legacy-bridge-description.md, claude.md, LEGACYBRIDGE_BUILD_SPEC_2.md, NEW_AGENT_BUILD_PROMPT_2.md
+
 ---
 
 ## 🛠️ **Required Tools & Methodology:**
