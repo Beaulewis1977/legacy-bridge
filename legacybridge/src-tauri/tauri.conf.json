@@ -8,37 +8,105 @@
   },
   "package": {
     "productName": "legacybridge",
-    "version": "0.0.0"
+    "version": "1.0.0"
   },
   "tauri": {
     "allowlist": {
       "all": false,
       "shell": {
         "all": false,
-        "open": true
+        "open": false
       },
       "fs": {
-        "all": true,
+        "all": false,
         "readFile": true,
         "writeFile": true,
         "readDir": true,
         "createDir": true,
-        "removeDir": true,
-        "removeFile": true,
-        "exists": true
+        "removeDir": false,
+        "removeFile": false,
+        "exists": true,
+        "scope": ["$APPDATA/*", "$DOCUMENT/*"]
       },
       "path": {
-        "all": true
+        "all": false
+      },
+      "http": {
+        "all": false,
+        "request": false
+      },
+      "notification": {
+        "all": false
+      },
+      "dialog": {
+        "all": false,
+        "open": true,
+        "save": true
+      },
+      "clipboard": {
+        "all": false,
+        "readText": false,
+        "writeText": true
+      },
+      "globalShortcut": {
+        "all": false
+      },
+      "window": {
+        "all": false,
+        "create": false,
+        "center": true,
+        "requestUserAttention": true,
+        "setResizable": true,
+        "setTitle": true,
+        "maximize": true,
+        "unmaximize": true,
+        "minimize": true,
+        "unminimize": true,
+        "show": true,
+        "hide": true,
+        "close": true,
+        "setDecorations": true,
+        "setAlwaysOnTop": false,
+        "setSize": true,
+        "setMinSize": true,
+        "setMaxSize": true,
+        "setPosition": false,
+        "setFullscreen": true,
+        "setFocus": true,
+        "setIcon": false,
+        "setSkipTaskbar": false,
+        "setCursorGrab": false,
+        "setCursorVisible": true,
+        "setCursorIcon": true,
+        "setCursorPosition": false,
+        "startDragging": true,
+        "print": false
+      },
+      "os": {
+        "all": false
+      },
+      "process": {
+        "all": false,
+        "exit": true,
+        "relaunch": false
       }
     },
     "bundle": {
       "active": true,
       "targets": "all",
       "identifier": "com.legacybridge.app",
-      "icon": []
+      "icon": [],
+      "resources": [],
+      "copyright": "Copyright © 2025 LegacyBridge",
+      "category": "DeveloperTool",
+      "shortDescription": "Secure RTF to Markdown converter",
+      "longDescription": "LegacyBridge provides secure, sandboxed conversion of RTF documents to Markdown format with enterprise-grade security."
     },
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://localhost:*; font-src 'self'; connect-src 'self' https://localhost:* http://localhost:*; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'none'",
+      "dangerousDisableAssetCspModification": false,
+      "dangerousRemoteDomainIpcAccess": [],
+      "freezePrototype": true
     },
     "windows": [
       {
@@ -46,8 +114,27 @@
         "resizable": true,
         "title": "LegacyBridge",
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "maxWidth": 1920,
+        "maxHeight": 1080,
+        "visible": true,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "fileDropEnabled": true,
+        "center": true
       }
-    ]
+    ],
+    "systemTray": {
+      "iconPath": null,
+      "iconAsTemplate": false
+    },
+    "updater": {
+      "active": false
+    }
   }
 }
+EOF < /dev/null

@@ -18,7 +18,7 @@ pub mod concurrent_processor;
 mod test_pipeline;
 
 use crate::conversion::types::{ConversionError, ConversionResult, RtfDocument, RtfToken};
-use crate::conversion::{rtf_lexer, RtfParser, MarkdownGenerator, MarkdownParser, RtfGenerator};
+use crate::conversion::{rtf_lexer, RtfParser, SecureRtfParser, MarkdownGenerator, MarkdownParser, RtfGenerator, InputValidator};
 
 /// Pipeline configuration options
 #[derive(Debug, Clone)]
@@ -130,6 +130,10 @@ impl DocumentPipeline {
 
     /// Process RTF content through the pipeline
     pub fn process(&self, rtf_content: &str) -> ConversionResult<PipelineContext> {
+        // SECURITY: Validate input size first (10MB limit)
+        let validator = InputValidator::new();
+        validator.validate_size(rtf_content, "RTF content")?;
+        
         let mut context = PipelineContext {
             rtf_content: rtf_content.to_string(),
             tokens: None,
@@ -139,8 +143,10 @@ impl DocumentPipeline {
             markdown: None,
         };
 
-        // Stage 1: Pre-validation
+        // Stage 1: Pre-validation (including security validation)
         if self.config.strict_validation {
+            // Use InputValidator for comprehensive security checks
+            validator.pre_validate_rtf(rtf_content)?;
             self.pre_validate(&mut context)?;
         }
 
@@ -189,6 +195,10 @@ impl DocumentPipeline {
 
     /// Process Markdown content through the pipeline to generate RTF
     pub fn process_markdown(&self, markdown_content: &str) -> ConversionResult<MarkdownPipelineContext> {
+        // SECURITY: Validate input size first (10MB limit)
+        let validator = InputValidator::new();
+        validator.validate_size(markdown_content, "Markdown content")?;
+        
         let mut context = MarkdownPipelineContext {
             markdown_content: markdown_content.to_string(),
             document: None,
@@ -197,8 +207,10 @@ impl DocumentPipeline {
             rtf: None,
         };
 
-        // Stage 1: Pre-validation
+        // Stage 1: Pre-validation (including security validation)
         if self.config.strict_validation {
+            // Use InputValidator for comprehensive security checks
+            validator.pre_validate_markdown(markdown_content)?;
             self.pre_validate_markdown(&mut context)?;
         }
 
@@ -251,11 +263,13 @@ impl DocumentPipeline {
     fn parse_with_formatting(&self, context: &PipelineContext) -> ConversionResult<RtfDocument> {
         let tokens = context.tokens.as_ref().unwrap();
         
+        // SECURITY: Use SecureRtfParser by default for all parsing
         if self.config.preserve_formatting {
             let formatter = formatting_engine::FormattingEngine::new();
+            // Note: FormattingEngine should also use SecureRtfParser internally
             formatter.parse_with_fidelity(tokens.clone())
         } else {
-            RtfParser::parse(tokens.clone())
+            SecureRtfParser::parse(tokens.clone())
         }
     }
 

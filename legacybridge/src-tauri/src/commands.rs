@@ -51,7 +51,8 @@ pub struct BatchConversionResponse {
 /// Convert RTF content to Markdown
 #[tauri::command]
 pub fn rtf_to_markdown(rtf_content: String) -> ConversionResponse {
-    match conversion::rtf_to_markdown(&rtf_content) {
+    // SECURITY: Use secure conversion by default
+    match conversion::secure_rtf_to_markdown(&rtf_content) {
         Ok(markdown) => ConversionResponse {
             success: true,
             result: Some(markdown),
@@ -68,7 +69,8 @@ pub fn rtf_to_markdown(rtf_content: String) -> ConversionResponse {
 /// Convert Markdown content to RTF
 #[tauri::command]
 pub fn markdown_to_rtf(markdown_content: String) -> ConversionResponse {
-    match conversion::markdown_to_rtf(&markdown_content) {
+    // SECURITY: Use secure conversion by default
+    match conversion::secure_markdown_to_rtf(&markdown_content) {
         Ok(rtf) => ConversionResponse {
             success: true,
             result: Some(rtf),
@@ -121,22 +123,43 @@ pub fn read_rtf_file(file_path: String) -> FileOperationResponse {
         };
     }
     
-    // Read file content
-    match fs::read_to_string(&path) {
-        Ok(rtf_content) => {
-            // Convert RTF to Markdown
-            match conversion::rtf_to_markdown(&rtf_content) {
-                Ok(markdown) => FileOperationResponse {
-                    success: true,
+    // SECURITY: Check file size before reading
+    match fs::metadata(&path) {
+        Ok(metadata) => {
+            // Check file size (10MB limit)
+            if metadata.len() > 10 * 1024 * 1024 {
+                return FileOperationResponse {
+                    success: false,
                     path: Some(file_path),
-                    content: Some(markdown),
-                    error: None,
-                },
+                    content: None,
+                    error: Some("File size exceeds 10MB limit".to_string()),
+                };
+            }
+            
+            // Read file content
+            match fs::read_to_string(&path) {
+                Ok(rtf_content) => {
+                    // SECURITY: Use secure conversion
+                    match conversion::secure_rtf_to_markdown(&rtf_content) {
+                        Ok(markdown) => FileOperationResponse {
+                            success: true,
+                            path: Some(file_path),
+                            content: Some(markdown),
+                            error: None,
+                        },
+                        Err(e) => FileOperationResponse {
+                            success: false,
+                            path: Some(file_path),
+                            content: None,
+                            error: Some(format!("Conversion error: {}", e)),
+                        },
+                    }
+                }
                 Err(e) => FileOperationResponse {
                     success: false,
                     path: Some(file_path),
                     content: None,
-                    error: Some(format!("Conversion error: {}", e)),
+                    error: Some(format!("Failed to read file: {}", e)),
                 },
             }
         }
@@ -144,7 +167,7 @@ pub fn read_rtf_file(file_path: String) -> FileOperationResponse {
             success: false,
             path: Some(file_path),
             content: None,
-            error: Some(format!("Failed to read file: {}", e)),
+            error: Some(format!("Failed to check file size: {}", e)),
         },
     }
 }
@@ -152,6 +175,16 @@ pub fn read_rtf_file(file_path: String) -> FileOperationResponse {
 /// Write Markdown content to a file
 #[tauri::command]
 pub fn write_markdown_file(file_path: String, content: String) -> FileOperationResponse {
+    // SECURITY: Validate content size (10MB limit)
+    if content.len() > 10 * 1024 * 1024 {
+        return FileOperationResponse {
+            success: false,
+            path: Some(file_path),
+            content: None,
+            error: Some("Content size exceeds 10MB limit".to_string()),
+        };
+    }
+    
     let path = Path::new(&file_path);
     
     // Ensure parent directory exists
@@ -186,6 +219,30 @@ pub fn write_markdown_file(file_path: String, content: String) -> FileOperationR
 /// Read file as base64 (useful for binary files or frontend transfer)
 #[tauri::command]
 pub fn read_file_base64(file_path: String) -> FileOperationResponse {
+    // SECURITY: Check file size before reading
+    let path = Path::new(&file_path);
+    match fs::metadata(&path) {
+        Ok(metadata) => {
+            // Check file size (10MB limit)
+            if metadata.len() > 10 * 1024 * 1024 {
+                return FileOperationResponse {
+                    success: false,
+                    path: Some(file_path),
+                    content: None,
+                    error: Some("File size exceeds 10MB limit".to_string()),
+                };
+            }
+        }
+        Err(e) => {
+            return FileOperationResponse {
+                success: false,
+                path: Some(file_path),
+                content: None,
+                error: Some(format!("Failed to check file size: {}", e)),
+            };
+        }
+    }
+    
     match fs::read(&file_path) {
         Ok(bytes) => {
             let base64_content = general_purpose::STANDARD.encode(&bytes);
@@ -208,6 +265,17 @@ pub fn read_file_base64(file_path: String) -> FileOperationResponse {
 /// Write base64 content to file
 #[tauri::command]
 pub fn write_file_base64(file_path: String, base64_content: String) -> FileOperationResponse {
+    // SECURITY: Validate base64 content size (10MB limit after decoding)
+    // Base64 increases size by ~33%, so check if encoded size is reasonable
+    if base64_content.len() > 14 * 1024 * 1024 {
+        return FileOperationResponse {
+            success: false,
+            path: Some(file_path),
+            content: None,
+            error: Some("Base64 content too large".to_string()),
+        };
+    }
+    
     match general_purpose::STANDARD.decode(&base64_content) {
         Ok(bytes) => {
             match fs::write(&file_path, bytes) {
@@ -256,8 +324,8 @@ pub fn batch_convert_rtf_to_markdown(request: BatchConversionRequest) -> BatchCo
         // Read RTF file
         match fs::read_to_string(&path) {
             Ok(rtf_content) => {
-                // Convert to Markdown
-                match conversion::rtf_to_markdown(&rtf_content) {
+                // SECURITY: Use secure conversion
+                match conversion::secure_rtf_to_markdown(&rtf_content) {
                     Ok(markdown) => {
                         // Generate output filename
                         let file_stem = path.file_stem()
@@ -418,11 +486,34 @@ pub fn read_rtf_file_pipeline(
         };
     }
     
-    // Read file content
-    match fs::read_to_string(&path) {
-        Ok(rtf_content) => {
-            // Convert using pipeline
-            rtf_to_markdown_pipeline(rtf_content, config)
+    // SECURITY: Check file size before reading
+    match fs::metadata(&path) {
+        Ok(metadata) => {
+            // Check file size (10MB limit)
+            if metadata.len() > 10 * 1024 * 1024 {
+                return PipelineConversionResponse {
+                    success: false,
+                    markdown: None,
+                    validation_results: Vec::new(),
+                    recovery_actions: Vec::new(),
+                    error: Some("File size exceeds 10MB limit".to_string()),
+                };
+            }
+            
+            // Read file content
+            match fs::read_to_string(&path) {
+                Ok(rtf_content) => {
+                    // Convert using pipeline
+                    rtf_to_markdown_pipeline(rtf_content, config)
+                }
+                Err(e) => PipelineConversionResponse {
+                    success: false,
+                    markdown: None,
+                    validation_results: Vec::new(),
+                    recovery_actions: Vec::new(),
+                    error: Some(format!("Failed to read file: {}", e)),
+                },
+            }
         }
         Err(e) => PipelineConversionResponse {
             success: false,
