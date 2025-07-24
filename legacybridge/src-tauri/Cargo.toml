@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = ["shell-open", "fs-all", "path-all"] }
+tauri = { version = "1", features = ["shell-open", "fs-all", "path-all"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1.0"
@@ -31,7 +31,8 @@ bumpalo = "3.14"
 crossbeam-channel = "0.5"
 parking_lot = "0.12"
 num_cpus = "1.16"
-tokio = { version = "1.35", features = ["rt-multi-thread", "time"] }
+tokio = { version = "1.35", features = ["rt-multi-thread", "time"], optional = true }
+lazy_static = "1.4"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -45,12 +46,28 @@ harness = false
 lto = true
 codegen-units = 1
 opt-level = 3
+strip = true
+panic = "abort"
+overflow-checks = false
 
 [profile.bench]
 debug = true
 
+[profile.release-min]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+strip = true
+panic = "abort"
+
+[[bin]]
+name = "validate_md_rtf"
+path = "validate_md_rtf.rs"
+
 [features]
+default = ["tauri-app"]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
+tauri-app = ["tauri", "tokio", "custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 # Feature for building as standalone DLL without Tauri dependencies
 dll-export = []

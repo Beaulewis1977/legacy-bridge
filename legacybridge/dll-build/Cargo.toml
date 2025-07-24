@@ -1,0 +1,27 @@
+[package]
+name = "legacybridge"
+version = "1.0.0"
+edition = "2021"
+authors = ["LegacyBridge Team"]
+description = "High-performance RTF ↔ Markdown converter DLL"
+
+[lib]
+name = "legacybridge"
+crate-type = ["cdylib"]
+
+[dependencies]
+lazy_static = "1.4"
+regex = "1.10"
+pulldown-cmark = "0.9"
+thiserror = "1.0"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true
+
+[target.'cfg(windows)'.build]
+rustflags = ["-C", "target-feature=+crt-static"]

@@ -1,0 +1,211 @@
+================================================================================
+                    LEGACYBRIDGE ENTERPRISE EDITION
+                        INSTALLATION GUIDE
+                          Version 1.0.0
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. System Requirements
+2. Pre-Installation Checklist
+3. Windows Installation
+4. Linux Installation
+5. macOS Installation
+6. Post-Installation Verification
+7. Troubleshooting
+8. Uninstallation
+
+================================================================================
+1. SYSTEM REQUIREMENTS
+================================================================================
+
+WINDOWS:
+- Windows 7 SP1, Windows 8.1, Windows 10, Windows 11, or Windows Server 2012+
+- x64 (64-bit) processor
+- Visual C++ Redistributable 2015-2022
+- Administrator privileges for installation
+- 100 MB free disk space
+
+LINUX:
+- Ubuntu 18.04 LTS, RHEL 7, CentOS 7, or newer
+- x86_64 architecture
+- glibc 2.17 or newer
+- GCC 4.8.5 or newer (for development)
+- Root privileges for installation
+- 100 MB free disk space
+
+macOS:
+- macOS 10.14 (Mojave) or newer
+- Intel or Apple Silicon processor
+- Xcode Command Line Tools (for development)
+- Administrator privileges for installation
+- 100 MB free disk space
+
+================================================================================
+2. PRE-INSTALLATION CHECKLIST
+================================================================================
+
+Before installing LegacyBridge, ensure:
+
+[ ] You have administrator/root privileges
+[ ] Your system meets the minimum requirements
+[ ] You have closed all applications that might use the DLL
+[ ] You have backed up any existing LegacyBridge installations
+[ ] Antivirus software is configured to allow the installation
+
+================================================================================
+3. WINDOWS INSTALLATION
+================================================================================
+
+AUTOMATED INSTALLATION:
+----------------------
+1. Extract the ENTERPRISE_PACKAGE.zip to a temporary directory
+2. Open Command Prompt as Administrator
+3. Navigate to: ENTERPRISE_PACKAGE\installation
+4. Run: install.bat
+5. Follow the on-screen prompts
+6. Restart any applications that will use LegacyBridge
+
+MANUAL INSTALLATION:
+-------------------
+1. Copy legacybridge.dll to C:\Windows\System32\
+2. Copy legacybridge.h to your development include directory
+3. Register the DLL:
+   regsvr32 C:\Windows\System32\legacybridge.dll
+4. Add to system PATH if needed
+
+VISUAL STUDIO INTEGRATION:
+-------------------------
+1. Add include path: $(ProgramFiles)\LegacyBridge\include
+2. Add library path: $(ProgramFiles)\LegacyBridge\bin
+3. Link against: legacybridge.lib
+
+================================================================================
+4. LINUX INSTALLATION
+================================================================================
+
+AUTOMATED INSTALLATION:
+----------------------
+1. Extract the ENTERPRISE_PACKAGE.tar.gz:
+   tar -xzf ENTERPRISE_PACKAGE.tar.gz
+2. Navigate to: ENTERPRISE_PACKAGE/installation
+3. Run as root: sudo ./install.sh
+4. Follow the on-screen prompts
+5. Run ldconfig to update library cache
+
+MANUAL INSTALLATION:
+-------------------
+1. Copy liblegacybridge.so to /usr/local/lib/
+2. Copy legacybridge.h to /usr/local/include/
+3. Create symbolic links:
+   ln -s /usr/local/lib/liblegacybridge.so /usr/local/lib/liblegacybridge.so.1
+4. Update library cache: sudo ldconfig
+5. Verify with: ldconfig -p | grep legacybridge
+
+COMPILATION FLAGS:
+-----------------
+Compile: gcc -I/usr/local/include your_program.c
+Link: gcc your_program.o -L/usr/local/lib -llegacybridge
+
+Or use pkg-config:
+gcc `pkg-config --cflags --libs legacybridge` your_program.c
+
+================================================================================
+5. macOS INSTALLATION
+================================================================================
+
+1. Extract the ENTERPRISE_PACKAGE.dmg or .tar.gz
+2. Copy legacybridge.dylib to /usr/local/lib/
+3. Copy legacybridge.h to /usr/local/include/
+4. Update library paths if needed:
+   install_name_tool -id /usr/local/lib/legacybridge.dylib legacybridge.dylib
+5. Verify installation:
+   otool -L /usr/local/lib/legacybridge.dylib
+
+================================================================================
+6. POST-INSTALLATION VERIFICATION
+================================================================================
+
+WINDOWS:
+--------
+1. Open Command Prompt
+2. Navigate to: C:\Program Files\LegacyBridge\tools
+3. Run: perf_test.exe
+4. Verify output shows successful conversions
+
+LINUX:
+------
+1. Open terminal
+2. Run: legacybridge-perf
+3. Or compile and run test program:
+   gcc -o test test_dll.c -llegacybridge
+   ./test
+
+ALL PLATFORMS:
+-------------
+1. Check installation directory structure
+2. Verify all files are present per MANIFEST.json
+3. Run example programs in examples/ directory
+4. Test with your specific use case
+
+================================================================================
+7. TROUBLESHOOTING
+================================================================================
+
+COMMON ISSUES:
+
+"DLL not found" (Windows):
+- Ensure legacybridge.dll is in System32 or application directory
+- Check PATH environment variable
+- Run regsvr32 again as Administrator
+
+"Library not found" (Linux):
+- Run: sudo ldconfig
+- Check: ldd your_program
+- Verify LD_LIBRARY_PATH includes /usr/local/lib
+
+"Permission denied":
+- Ensure you have administrator/root privileges
+- Check file permissions: should be 755 for libraries
+
+"Version mismatch":
+- Remove old versions before installing
+- Check MANIFEST.json for correct version
+
+Performance issues:
+- Verify you're using the release build
+- Check system resources (RAM, CPU)
+- Run performance test tool to baseline
+
+================================================================================
+8. UNINSTALLATION
+================================================================================
+
+WINDOWS:
+--------
+1. Run: C:\Program Files\LegacyBridge\uninstall.bat as Administrator
+2. Or manually:
+   - Unregister DLL: regsvr32 /u legacybridge.dll
+   - Delete C:\Program Files\LegacyBridge
+   - Remove from PATH
+   - Delete registry keys under HKLM\SOFTWARE\LegacyBridge
+
+LINUX:
+------
+1. Run: sudo /opt/legacybridge/uninstall.sh
+2. Or manually:
+   - Remove /usr/local/lib/liblegacybridge.so*
+   - Remove /usr/local/include/legacybridge.h
+   - Remove /opt/legacybridge
+   - Run: sudo ldconfig
+
+================================================================================
+SUPPORT
+================================================================================
+
+For technical support:
+- Email: support@legacybridge.com
+- Documentation: See docs/ directory
+- Examples: See examples/ directory
+
+================================================================================
