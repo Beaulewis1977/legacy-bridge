@@ -1,0 +1,44 @@
+LIBRARY legacybridge
+EXPORTS
+    ; Core conversion functions
+    legacybridge_rtf_to_markdown
+    legacybridge_markdown_to_rtf
+    legacybridge_free_string
+    legacybridge_get_last_error
+    legacybridge_get_version
+    legacybridge_get_version_info
+    legacybridge_test_connection
+    
+    ; Batch operations
+    legacybridge_batch_rtf_to_markdown
+    legacybridge_batch_markdown_to_rtf
+    legacybridge_get_batch_progress
+    legacybridge_cancel_batch_operation
+    
+    ; File operations
+    legacybridge_convert_rtf_file_to_md
+    legacybridge_convert_md_file_to_rtf
+    legacybridge_convert_folder_rtf_to_md
+    legacybridge_convert_folder_md_to_rtf
+    
+    ; Validation functions
+    legacybridge_validate_rtf_document
+    legacybridge_validate_markdown_document
+    
+    ; Utility functions
+    legacybridge_extract_plain_text
+    legacybridge_clean_rtf_formatting
+    legacybridge_normalize_markdown
+    
+    ; Template functions (stubs to be implemented)
+    legacybridge_apply_rtf_template
+    legacybridge_create_rtf_template
+    legacybridge_list_available_templates
+    legacybridge_apply_markdown_template
+    legacybridge_validate_template
+    
+    ; CSV/Table functions (stubs to be implemented)
+    legacybridge_export_to_csv
+    legacybridge_import_from_csv
+    legacybridge_convert_table_to_rtf
+    legacybridge_extract_tables_from_rtf

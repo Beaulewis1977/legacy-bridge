@@ -57,9 +57,17 @@ export interface PipelineConversionResult {
 }
 
 // Streaming types
+export interface StreamUpdateData {
+  progress?: number;
+  content?: string;
+  validation?: ValidationResult[];
+  error?: ConversionError;
+  metadata?: Record<string, unknown>;
+}
+
 export interface StreamUpdate {
   type: 'progress' | 'partial' | 'validation' | 'complete' | 'error';
-  data: any;
+  data: StreamUpdateData;
   timestamp: number;
 }
 
@@ -251,7 +259,12 @@ export const tauriApi = {
     averageProcessingTime: number;
   }> {
     try {
-      const stats = await invoke<any>('get_conversion_stats');
+      const stats = await invoke<{
+        totalConversions: number;
+        successfulConversions: number;
+        failedConversions: number;
+        averageProcessingTime: number;
+      }>('get_conversion_stats');
       return stats;
     } catch (error) {
       return {
@@ -267,13 +280,13 @@ export const tauriApi = {
   async readFileContent(filePath: string): Promise<{ success: boolean; content?: string; error?: string }> {
     try {
       // Use the existing read_rtf_file command which returns content
-      const response = await invoke<any>('read_rtf_file', {
+      const response = await invoke<{ success: boolean; content?: string; error?: string }>('read_rtf_file', {
         filePath
       });
       
       if (response.success && response.content) {
         // Return the original RTF content, not the converted markdown
-        const rtfContent = await invoke<any>('read_file_base64', {
+        const rtfContent = await invoke<{ success: boolean; content?: string; error?: string }>('read_file_base64', {
           filePath
         });
         
@@ -287,7 +300,7 @@ export const tauriApi = {
       }
       
       // If RTF read fails, try reading as plain text via base64
-      const base64Response = await invoke<any>('read_file_base64', {
+      const base64Response = await invoke<{ success: boolean; content?: string; error?: string }>('read_file_base64', {
         filePath
       });
       

@@ -1,5 +1,21 @@
 # LegacyBridge Production Build Guide
 
+## 📚 Table of Contents
+
+- [Overview](#overview)
+- [Build Configurations](#build-configurations)
+  - [DLL Build (Recommended for Production)](#dll-build-recommended-for-production)
+  - [System Requirements](#system-requirements)
+  - [Building the DLL](#building-the-dll)
+  - [Build Features](#build-features)
+  - [Optimization Flags](#optimization-flags)
+  - [Performance Benchmarks](#performance-benchmarks)
+  - [Testing the Build](#testing-the-build)
+- [Cross-Platform Builds](#cross-platform-builds)
+- [Integration](#integration)
+- [Troubleshooting](#troubleshooting)
+- [Release Process](#release-process)
+
 ## Overview
 
 LegacyBridge is a high-performance RTF ↔ Markdown converter that can be built as:

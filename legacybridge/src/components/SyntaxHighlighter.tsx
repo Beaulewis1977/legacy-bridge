@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizeSyntaxHighlight, escapeHtml } from '@/lib/sanitizer';
 
 interface SyntaxHighlighterProps {
   code: string;
@@ -19,7 +20,8 @@ export function SyntaxHighlighter({
   const highlightedCode = useMemo(() => {
     if (!code) return '';
 
-    let highlighted = code;
+    // First escape the code to prevent XSS
+    let highlighted = escapeHtml(code);
 
     if (language === 'rtf') {
       // RTF syntax highlighting
@@ -41,14 +43,14 @@ export function SyntaxHighlighter({
       
       // Special characters
       highlighted = highlighted.replace(
-        /\\'/g,
-        '<span class="text-green-600 dark:text-green-400">\\'</span>'
+        /\\&#039;/g,
+        '<span class="text-green-600 dark:text-green-400">\\&#039;</span>'
       );
       
       // Comments (if any)
       highlighted = highlighted.replace(
         /\\\\.*$/gm,
-        '<span class="text-gray-500 dark:text-gray-400">$&</span>'
+        (match) => `<span class="text-gray-500 dark:text-gray-400">${match}</span>`
       );
     } else if (language === 'markdown') {
       // Markdown syntax highlighting
@@ -70,13 +72,13 @@ export function SyntaxHighlighter({
         '<span class="text-orange-600 dark:text-orange-400">*</span><span class="italic">$1</span><span class="text-orange-600 dark:text-orange-400">*</span>'
       );
       
-      // Code blocks
+      // Code blocks - ensure escaped content stays escaped
       highlighted = highlighted.replace(
         /```([\\w]*)\n([\\s\\S]*?)```/g,
         '<span class="text-green-600 dark:text-green-400">```$1</span>\n<span class="bg-gray-100 dark:bg-gray-800">$2</span><span class="text-green-600 dark:text-green-400">```</span>'
       );
       
-      // Inline code
+      // Inline code - ensure escaped content stays escaped
       highlighted = highlighted.replace(
         /`([^`]+)`/g,
         '<span class="text-green-600 dark:text-green-400">`</span><span class="bg-gray-100 dark:bg-gray-800 px-1">$1</span><span class="text-green-600 dark:text-green-400">`</span>'
@@ -96,8 +98,8 @@ export function SyntaxHighlighter({
       
       // Blockquotes
       highlighted = highlighted.replace(
-        /^>\s+(.*)$/gm,
-        '<span class="text-gray-600 dark:text-gray-400">></span> <span class="text-gray-700 dark:text-gray-300">$1</span>'
+        /^&gt;\s+(.*)$/gm,
+        '<span class="text-gray-600 dark:text-gray-400">&gt;</span> <span class="text-gray-700 dark:text-gray-300">$1</span>'
       );
     }
 
@@ -125,7 +127,7 @@ export function SyntaxHighlighter({
                 key={index}
                 className="leading-6 whitespace-pre"
                 dangerouslySetInnerHTML={{
-                  __html: highlightLine(line, index, language, highlightedCode)
+                  __html: sanitizeSyntaxHighlight(highlightLine(line, index, language, highlightedCode))
                 }}
               />
             ))}
@@ -134,7 +136,7 @@ export function SyntaxHighlighter({
       ) : (
         <div
           className="whitespace-pre-wrap"
-          dangerouslySetInnerHTML={{ __html: highlightedCode }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSyntaxHighlight(highlightedCode) }}
         />
       )}
     </div>
@@ -149,5 +151,5 @@ function highlightLine(
 ): string {
   // Extract the highlighted version of this specific line
   const highlightedLines = fullHighlighted.split('\n');
-  return highlightedLines[lineIndex] || line;
+  return highlightedLines[lineIndex] || escapeHtml(line);
 }
