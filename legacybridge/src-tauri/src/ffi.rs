@@ -978,18 +978,5 @@ pub unsafe extern "C" fn legacybridge_extract_tables_from_rtf(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_version() {
-        let version = unsafe { legacybridge_get_version() };
-        assert!(!version.is_null());
-    }
-
-    #[test]
-    fn test_connection() {
-        let result = unsafe { legacybridge_test_connection() };
-        assert_eq!(result, 1);
-    }
-}
+#[path = "ffi_tests.rs"]
+mod ffi_tests;

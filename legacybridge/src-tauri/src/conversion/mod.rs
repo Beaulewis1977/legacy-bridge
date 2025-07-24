@@ -1,5 +1,6 @@
 // Core conversion module that handles RTF to Markdown and vice versa
 
+pub mod error;
 pub mod rtf_lexer;
 pub mod rtf_parser;
 pub mod markdown_generator;
@@ -141,7 +142,8 @@ mod tests {
         let rtf = r"{\rtf1 Hello World\par}";
         let result = secure_rtf_to_markdown(rtf);
         assert!(result.is_ok());
-        assert!(result.unwrap().contains("Hello World"));
+        let markdown = result.expect("conversion should succeed");
+        assert!(markdown.contains("Hello World"));
     }
     
     #[test]
