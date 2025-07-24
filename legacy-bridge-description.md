@@ -52,6 +52,9 @@ LegacyBridge is a **specialized document conversion solution** designed to bridg
 **Document Processing Pipeline:**
 
 
+RTF Documents → Parser → Formatting Engine → Markdown Generator ↓ Template System → Validation Layer → Error Recovery → Output ↓ Legacy Integration → VB6/VFP9 Function Calls → Enterprise Systems
+
+
 **Specialized Features:**
 
 1. **RTF Fidelity Engine**
