@@ -292,7 +292,7 @@ impl Validator {
     /// Check nesting depth
     fn check_nesting_depth(&self, content: &str, max_depth: usize) -> Vec<ValidationResult> {
         let mut results = Vec::new();
-        let mut depth = 0;
+        let mut depth: usize = 0;
         let mut max_found = 0;
         let mut escaped = false;
 
@@ -397,7 +397,7 @@ impl Validator {
         let mut results = Vec::new();
         let mut table_count = 0;
 
-        fn find_tables(nodes: &[RtfNode], table_count: &mut usize) -> Vec<&RtfNode> {
+        fn find_tables<'a>(nodes: &'a [RtfNode], table_count: &mut usize) -> Vec<&'a RtfNode> {
             let mut tables = Vec::new();
             for node in nodes {
                 match node {

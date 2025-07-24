@@ -1,33 +1,83 @@
-// RTF Parser - Parses RTF tokens into a document structure
+// Secure RTF Parser with enhanced security controls
+//
+// This module provides a security-hardened RTF parser that prevents
+// various attack vectors including stack overflow, resource exhaustion,
+// and malicious content injection.
 
 use super::types::{
     ConversionError, ConversionResult, DocumentMetadata, RtfDocument,
     RtfNode, RtfToken,
 };
+use super::security::{SecurityLimits, ControlWordSecurity, is_control_word_safe};
+use std::time::{Duration, Instant};
 
-/// RTF Parser
-pub struct RtfParser {
+/// Security-enhanced RTF Parser
+pub struct SecureRtfParser {
     tokens: Vec<RtfToken>,
     position: usize,
     metadata: DocumentMetadata,
     font_table_mode: bool,
     color_table_mode: bool,
     recursion_depth: usize,
+    security_limits: SecurityLimits,
+    control_word_security: ControlWordSecurity,
+    start_time: Instant,
+    nodes_processed: usize,
 }
 
-impl RtfParser {
-    /// Parse RTF tokens into a document structure
-    pub fn parse(tokens: Vec<RtfToken>) -> ConversionResult<RtfDocument> {
-        let mut parser = RtfParser {
+impl SecureRtfParser {
+    /// Parse RTF tokens with security controls
+    pub fn parse_with_security(
+        tokens: Vec<RtfToken>,
+        security_limits: SecurityLimits,
+        control_word_security: ControlWordSecurity,
+    ) -> ConversionResult<RtfDocument> {
+        let mut parser = SecureRtfParser {
             tokens,
             position: 0,
             metadata: DocumentMetadata::default(),
             font_table_mode: false,
             color_table_mode: false,
             recursion_depth: 0,
+            security_limits,
+            control_word_security,
+            start_time: Instant::now(),
+            nodes_processed: 0,
         };
 
         parser.parse_document()
+    }
+
+    /// Parse with default security settings
+    pub fn parse(tokens: Vec<RtfToken>) -> ConversionResult<RtfDocument> {
+        Self::parse_with_security(
+            tokens,
+            SecurityLimits::default(),
+            ControlWordSecurity::default(),
+        )
+    }
+
+    /// Check if parsing timeout has been exceeded
+    fn check_timeout(&self) -> ConversionResult<()> {
+        let elapsed = self.start_time.elapsed();
+        if elapsed > Duration::from_secs(self.security_limits.parsing_timeout_secs) {
+            return Err(ConversionError::ParseError(
+                format!("Parsing timeout exceeded ({} seconds)", self.security_limits.parsing_timeout_secs)
+            ));
+        }
+        Ok(())
+    }
+
+    /// Increment and check node processing limit
+    fn increment_nodes(&mut self) -> ConversionResult<()> {
+        self.nodes_processed += 1;
+        
+        // Check every 100 nodes to avoid excessive overhead
+        if self.nodes_processed % 100 == 0 {
+            self.check_timeout()?;
+        }
+        
+        Ok(())
     }
 
     /// Parse the entire document
@@ -55,12 +105,30 @@ impl RtfParser {
         })
     }
 
-    /// Parse content within a group
+    /// Parse content within a group with security checks
     fn parse_group_content(&mut self) -> ConversionResult<Vec<RtfNode>> {
+        // Security: Check recursion depth
+        if self.recursion_depth >= self.security_limits.max_nesting_depth {
+            return Err(ConversionError::ParseError(
+                format!("Maximum nesting depth {} exceeded", self.security_limits.max_nesting_depth)
+            ));
+        }
+
+        self.recursion_depth += 1;
+        let result = self.parse_group_content_inner();
+        self.recursion_depth -= 1;
+
+        result
+    }
+
+    /// Inner group parsing logic
+    fn parse_group_content_inner(&mut self) -> ConversionResult<Vec<RtfNode>> {
         let mut nodes = Vec::new();
         let mut current_paragraph = Vec::new();
 
         while self.position < self.tokens.len() {
+            self.increment_nodes()?;
+            
             match self.current_token() {
                 Some(RtfToken::GroupEnd) => {
                     // End of current group
@@ -79,6 +147,14 @@ impl RtfParser {
                 Some(RtfToken::ControlWord { name, parameter }) => {
                     let name = name.clone();
                     let parameter = *parameter;
+                    
+                    // Security: Check if control word is allowed
+                    if !is_control_word_safe(&name, &self.control_word_security) {
+                        return Err(ConversionError::ParseError(
+                            format!("Forbidden control word: \\{}", name)
+                        ));
+                    }
+                    
                     self.advance();
 
                     match name.as_str() {
@@ -128,7 +204,7 @@ impl RtfParser {
                             self.parse_info_group()?;
                         }
                         _ => {
-                            // Ignore other control words for now
+                            // Ignore other control words (that passed security check)
                         }
                     }
                 }
@@ -137,6 +213,7 @@ impl RtfParser {
                     self.advance();
                 }
                 Some(RtfToken::Text(text)) => {
+                    // Security: Text size is already limited by the lexer
                     current_paragraph.push(RtfNode::Text(text.clone()));
                     self.advance();
                 }
@@ -156,12 +233,14 @@ impl RtfParser {
         Ok(nodes)
     }
 
-    /// Parse formatted content (for bold, italic, etc.)
+    /// Parse formatted content with security limits
     fn parse_formatted_content(&mut self) -> ConversionResult<Vec<RtfNode>> {
         let mut content = Vec::new();
 
         // Look for content until we hit a formatting boundary
         while let Some(token) = self.current_token() {
+            self.increment_nodes()?;
+            
             match token {
                 RtfToken::Text(text) => {
                     content.push(RtfNode::Text(text.clone()));
@@ -183,23 +262,23 @@ impl RtfParser {
         Ok(content)
     }
 
-    /// Parse font table
+    /// Parse font table (stub - implement with security checks)
     fn parse_font_table(&mut self) -> ConversionResult<()> {
-        // TODO: Implement full font table parsing
+        // TODO: Implement full font table parsing with security limits
         self.font_table_mode = false;
         Ok(())
     }
 
-    /// Parse color table
+    /// Parse color table (stub - implement with security checks)
     fn parse_color_table(&mut self) -> ConversionResult<()> {
-        // TODO: Implement full color table parsing
+        // TODO: Implement full color table parsing with security limits
         self.color_table_mode = false;
         Ok(())
     }
 
-    /// Parse info group (document metadata)
+    /// Parse info group (stub - implement with security checks)
     fn parse_info_group(&mut self) -> ConversionResult<()> {
-        // TODO: Implement info group parsing
+        // TODO: Implement info group parsing with security limits
         Ok(())
     }
 
@@ -242,30 +321,51 @@ mod tests {
     use crate::conversion::rtf_lexer::tokenize;
 
     #[test]
-    fn test_parse_simple_document() {
+    fn test_parse_with_security() {
         let rtf = r"{\rtf1 Hello World\par}";
         let tokens = tokenize(rtf).unwrap();
-        let document = RtfParser::parse(tokens).unwrap();
+        let document = SecureRtfParser::parse(tokens).unwrap();
         
         assert_eq!(document.content.len(), 1);
-        match &document.content[0] {
-            RtfNode::Paragraph(nodes) => {
-                assert_eq!(nodes.len(), 1);
-                match &nodes[0] {
-                    RtfNode::Text(text) => assert_eq!(text, "Hello World"),
-                    _ => panic!("Expected text node"),
-                }
+    }
+
+    #[test]
+    fn test_forbidden_control_word() {
+        let rtf = r"{\rtf1 {\object\objdata} Hello\par}";
+        let tokens = tokenize(rtf).unwrap();
+        let result = SecureRtfParser::parse(tokens);
+        
+        assert!(result.is_err());
+        match result {
+            Err(ConversionError::ParseError(msg)) => {
+                assert!(msg.contains("Forbidden control word"));
             }
-            _ => panic!("Expected paragraph node"),
+            _ => panic!("Expected parse error for forbidden control word"),
         }
     }
 
     #[test]
-    fn test_parse_formatted_text() {
-        let rtf = r"{\rtf1 Normal {\b Bold} {\i Italic}\par}";
-        let tokens = tokenize(rtf).unwrap();
-        let document = RtfParser::parse(tokens).unwrap();
+    fn test_max_nesting_depth() {
+        // Create deeply nested RTF
+        let mut rtf = String::from(r"{\rtf1 ");
+        for _ in 0..60 {
+            rtf.push('{');
+        }
+        rtf.push_str("Hello");
+        for _ in 0..60 {
+            rtf.push('}');
+        }
+        rtf.push('}');
         
-        assert_eq!(document.content.len(), 1);
+        let tokens = tokenize(&rtf).unwrap();
+        let result = SecureRtfParser::parse(tokens);
+        
+        assert!(result.is_err());
+        match result {
+            Err(ConversionError::ParseError(msg)) => {
+                assert!(msg.contains("Maximum nesting depth"));
+            }
+            _ => panic!("Expected parse error for excessive nesting"),
+        }
     }
 }

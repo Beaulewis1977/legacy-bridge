@@ -3,11 +3,16 @@
 pub mod rtf_lexer;
 pub mod rtf_parser;
 pub mod markdown_generator;
+pub mod markdown_parser;
+pub mod markdown_parser_optimized;
+pub mod rtf_generator;
 pub mod types;
 
 pub use types::{ConversionError, ConversionResult};
 pub use rtf_parser::RtfParser;
 pub use markdown_generator::MarkdownGenerator;
+pub use markdown_parser::MarkdownParser;
+pub use rtf_generator::RtfGenerator;
 
 /// Convert RTF content to Markdown
 pub fn rtf_to_markdown(rtf_content: &str) -> ConversionResult<String> {
@@ -45,11 +50,37 @@ fn should_use_pipeline(rtf_content: &str) -> bool {
 }
 
 /// Convert Markdown content to RTF
-pub fn markdown_to_rtf(_markdown_content: &str) -> ConversionResult<String> {
-    // TODO: Implement markdown to RTF conversion
-    Err(ConversionError::NotImplemented(
-        "Markdown to RTF conversion is not yet implemented".to_string()
-    ))
+pub fn markdown_to_rtf(markdown_content: &str) -> ConversionResult<String> {
+    // Check if we should use the pipeline based on content characteristics
+    if should_use_pipeline_md(markdown_content) {
+        // Use pipeline for complex documents
+        use crate::pipeline::{PipelineConfig, convert_markdown_to_rtf_with_pipeline};
+        let config = PipelineConfig {
+            strict_validation: false, // Less strict for backward compatibility
+            auto_recovery: true,
+            template: None,
+            preserve_formatting: true,
+            legacy_mode: false,
+        };
+        match convert_markdown_to_rtf_with_pipeline(markdown_content, Some(config)) {
+            Ok((rtf, _context)) => Ok(rtf),
+            Err(e) => Err(e),
+        }
+    } else {
+        // Use simple conversion for basic documents
+        let document = MarkdownParser::parse(markdown_content)?;
+        let rtf = RtfGenerator::generate(&document)?;
+        Ok(rtf)
+    }
+}
+
+/// Determine if a markdown document should use the pipeline
+fn should_use_pipeline_md(markdown_content: &str) -> bool {
+    // Use pipeline for documents that might benefit from advanced features
+    markdown_content.contains("|") || // Tables
+    markdown_content.contains("```") || // Code blocks  
+    markdown_content.contains("[^") || // Footnotes
+    markdown_content.len() > 50000 // Large documents
 }
 
 #[cfg(test)]

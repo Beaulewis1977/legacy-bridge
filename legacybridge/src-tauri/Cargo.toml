@@ -8,6 +8,7 @@ edition = "2021"
 [lib]
 name = "legacybridge"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,7 +23,34 @@ thiserror = "1.0"
 base64 = "0.21"
 regex = "1.10"
 chrono = "0.4"
+pulldown-cmark = "0.9"
+rayon = "1.8"
+ahash = "0.8"
+smallvec = "1.11"
+bumpalo = "3.14"
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
+num_cpus = "1.16"
+tokio = { version = "1.35", features = ["rt-multi-thread", "time"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.4"
+
+[[bench]]
+name = "conversion_bench"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+debug = true
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+# Feature for building as standalone DLL without Tauri dependencies
+dll-export = []

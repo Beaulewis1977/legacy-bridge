@@ -8,15 +8,17 @@
 //         Legacy Integration → VB6/VFP9 Function Calls → Enterprise Systems
 
 pub mod formatting_engine;
+pub mod formatting_engine_optimized;
 pub mod validation_layer;
 pub mod error_recovery;
 pub mod template_system;
+pub mod concurrent_processor;
 
 #[cfg(test)]
 mod test_pipeline;
 
 use crate::conversion::types::{ConversionError, ConversionResult, RtfDocument, RtfToken};
-use crate::conversion::{rtf_lexer, RtfParser, MarkdownGenerator};
+use crate::conversion::{rtf_lexer, RtfParser, MarkdownGenerator, MarkdownParser, RtfGenerator};
 
 /// Pipeline configuration options
 #[derive(Debug, Clone)]
@@ -45,7 +47,7 @@ impl Default for PipelineConfig {
     }
 }
 
-/// Pipeline execution context
+/// Pipeline execution context for RTF → MD
 pub struct PipelineContext {
     /// Original RTF content
     pub rtf_content: String,
@@ -59,6 +61,20 @@ pub struct PipelineContext {
     pub recovery_actions: Vec<RecoveryAction>,
     /// Generated markdown
     pub markdown: Option<String>,
+}
+
+/// Pipeline execution context for MD → RTF
+pub struct MarkdownPipelineContext {
+    /// Original Markdown content
+    pub markdown_content: String,
+    /// Parsed document
+    pub document: Option<RtfDocument>,
+    /// Validation results
+    pub validation_results: Vec<ValidationResult>,
+    /// Error recovery actions taken
+    pub recovery_actions: Vec<RecoveryAction>,
+    /// Generated RTF
+    pub rtf: Option<String>,
 }
 
 /// Validation result
@@ -91,6 +107,7 @@ pub enum RecoveryType {
     EncodingFix,
     FormatCorrection,
     MissingDataInsertion,
+    RemoveInvalid,
 }
 
 /// Main Document Processing Pipeline
@@ -166,6 +183,51 @@ impl DocumentPipeline {
         // Stage 6: Markdown generation
         let markdown = self.generate_markdown(&context)?;
         context.markdown = Some(markdown);
+
+        Ok(context)
+    }
+
+    /// Process Markdown content through the pipeline to generate RTF
+    pub fn process_markdown(&self, markdown_content: &str) -> ConversionResult<MarkdownPipelineContext> {
+        let mut context = MarkdownPipelineContext {
+            markdown_content: markdown_content.to_string(),
+            document: None,
+            validation_results: Vec::new(),
+            recovery_actions: Vec::new(),
+            rtf: None,
+        };
+
+        // Stage 1: Pre-validation
+        if self.config.strict_validation {
+            self.pre_validate_markdown(&mut context)?;
+        }
+
+        // Stage 2: Markdown parsing
+        let document = match MarkdownParser::parse(markdown_content) {
+            Ok(doc) => doc,
+            Err(e) => {
+                if self.config.auto_recovery {
+                    self.recover_markdown_parsing(&mut context, e)?
+                } else {
+                    return Err(e);
+                }
+            }
+        };
+        context.document = Some(document);
+
+        // Stage 3: Template application (if configured)
+        if let Some(template_name) = &self.config.template {
+            self.apply_template_markdown(&mut context, template_name)?;
+        }
+
+        // Stage 4: Post-validation
+        if self.config.strict_validation {
+            self.post_validate_markdown(&mut context)?;
+        }
+
+        // Stage 5: RTF generation
+        let rtf = self.generate_rtf(&context)?;
+        context.rtf = Some(rtf);
 
         Ok(context)
     }
@@ -264,6 +326,91 @@ impl DocumentPipeline {
             MarkdownGenerator::generate(document)
         }
     }
+
+    /// Pre-validation stage for Markdown
+    fn pre_validate_markdown(&self, context: &mut MarkdownPipelineContext) -> ConversionResult<()> {
+        let _validator = validation_layer::Validator::new();
+        // For now, basic validation - check if content is not empty
+        if context.markdown_content.trim().is_empty() {
+            let result = ValidationResult {
+                level: ValidationLevel::Error,
+                code: "EMPTY_CONTENT".to_string(),
+                message: "Markdown content is empty".to_string(),
+                location: None,
+            };
+            context.validation_results.push(result);
+            return Err(ConversionError::ValidationError("Empty Markdown content".to_string()));
+        }
+        Ok(())
+    }
+
+    /// Recover from markdown parsing errors
+    fn recover_markdown_parsing(
+        &self,
+        context: &mut MarkdownPipelineContext,
+        error: ConversionError,
+    ) -> ConversionResult<RtfDocument> {
+        let recovery = error_recovery::ErrorRecovery::new();
+        // For now, create a simple recovery document
+        let action = RecoveryAction {
+            action_type: RecoveryType::StructureRepair,
+            description: format!("Created fallback document due to parsing error: {}", error),
+            applied: true,
+        };
+        context.recovery_actions.push(action);
+
+        // Create a simple document with the raw markdown as text
+        use crate::conversion::types::{DocumentMetadata, RtfNode};
+        let document = RtfDocument {
+            metadata: DocumentMetadata::default(),
+            content: vec![RtfNode::Paragraph(vec![RtfNode::Text(context.markdown_content.clone())])],
+        };
+        Ok(document)
+    }
+
+    /// Apply template to markdown document
+    fn apply_template_markdown(
+        &self,
+        context: &mut MarkdownPipelineContext,
+        template_name: &str,
+    ) -> ConversionResult<()> {
+        let template_system = template_system::TemplateSystem::new();
+        let document = context.document.as_mut().unwrap();
+        
+        template_system.apply_template(document, template_name)?;
+        Ok(())
+    }
+
+    /// Post-validation stage for markdown
+    fn post_validate_markdown(&self, context: &mut MarkdownPipelineContext) -> ConversionResult<()> {
+        let validator = validation_layer::Validator::new();
+        let document = context.document.as_ref().unwrap();
+        let results = validator.post_validate(document);
+        
+        for result in &results {
+            if result.level == ValidationLevel::Error {
+                return Err(ConversionError::ValidationError(result.message.clone()));
+            }
+        }
+        
+        context.validation_results.extend(results);
+        Ok(())
+    }
+
+    /// Generate RTF with formatting preservation
+    fn generate_rtf(&self, context: &MarkdownPipelineContext) -> ConversionResult<String> {
+        let document = context.document.as_ref().unwrap();
+        
+        if let Some(template_name) = &self.config.template {
+            RtfGenerator::generate_with_template(document, Some(template_name))
+        } else if self.config.preserve_formatting {
+            // Use standard generation with full formatting
+            RtfGenerator::generate(document)
+        } else {
+            // Use minimal generation for simple documents
+            RtfGenerator::generate_with_template(document, Some("minimal"))
+        }
+    }
 }
 
 /// Public API for pipeline conversion
@@ -280,6 +427,22 @@ pub fn convert_rtf_to_markdown_with_pipeline(
     let markdown = context.markdown.as_ref().unwrap().clone();
     
     Ok((markdown, context))
+}
+
+/// Public API for MD→RTF pipeline conversion
+pub fn convert_markdown_to_rtf_with_pipeline(
+    markdown_content: &str,
+    config: Option<PipelineConfig>,
+) -> ConversionResult<(String, MarkdownPipelineContext)> {
+    let pipeline = match config {
+        Some(cfg) => DocumentPipeline::with_config(cfg),
+        None => DocumentPipeline::new(),
+    };
+    
+    let context = pipeline.process_markdown(markdown_content)?;
+    let rtf = context.rtf.as_ref().unwrap().clone();
+    
+    Ok((rtf, context))
 }
 
 // Add ValidationError variant to ConversionError if not already present

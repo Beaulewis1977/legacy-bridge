@@ -5,12 +5,11 @@
 
 use crate::conversion::types::{
     ConversionError, ConversionResult, RtfDocument, RtfNode, RtfToken,
-    DocumentMetadata, TableRow, TableCell,
+    DocumentMetadata,
 };
 use crate::conversion::rtf_lexer;
 use crate::conversion::RtfParser;
 use crate::pipeline::{RecoveryAction, RecoveryType};
-use std::collections::VecDeque;
 
 /// Error recovery strategies
 #[derive(Debug, Clone)]
@@ -134,12 +133,13 @@ impl ErrorRecovery {
     /// Analyze lexer error and identify issues
     fn analyze_lexer_error(&self, error_msg: &str, context: &mut RecoveryContext) {
         // Common lexer errors and their locations
+        let content = context.original_content.clone();
         if error_msg.contains("unclosed") || error_msg.contains("unmatched") {
-            self.find_brace_issues(&context.original_content, context);
+            self.find_brace_issues(&content, context);
         } else if error_msg.contains("invalid control") {
-            self.find_control_word_issues(&context.original_content, context);
+            self.find_control_word_issues(&content, context);
         } else if error_msg.contains("encoding") || error_msg.contains("character") {
-            self.find_encoding_issues(&context.original_content, context);
+            self.find_encoding_issues(&content, context);
         }
     }
 
@@ -272,17 +272,18 @@ impl ErrorRecovery {
     /// Apply tokenization recovery strategies
     fn apply_tokenization_recovery(&self, context: &mut RecoveryContext) -> ConversionResult<String> {
         let mut fixed = context.original_content.clone();
+        let error_locs = context.error_locations.clone();
 
         match self.strategy {
             RecoveryStrategy::Skip => {
                 // Remove problematic sections
-                for error_loc in context.error_locations.iter().rev() {
+                for error_loc in error_locs.iter().rev() {
                     self.skip_problematic_content(&mut fixed, error_loc, context);
                 }
             }
             RecoveryStrategy::ReplaceWithPlaceholder => {
                 // Replace errors with safe placeholders
-                for error_loc in context.error_locations.iter().rev() {
+                for error_loc in error_locs.iter().rev() {
                     self.replace_with_placeholder(&mut fixed, error_loc, context);
                 }
             }
@@ -311,7 +312,7 @@ impl ErrorRecovery {
     /// Skip problematic content
     fn skip_problematic_content(
         &self,
-        content: &mut String,
+        _content: &mut String,
         error_loc: &ErrorLocation,
         context: &mut RecoveryContext,
     ) {
@@ -329,7 +330,7 @@ impl ErrorRecovery {
     /// Replace with placeholder
     fn replace_with_placeholder(
         &self,
-        content: &mut String,
+        _content: &mut String,
         error_loc: &ErrorLocation,
         context: &mut RecoveryContext,
     ) {
@@ -478,7 +479,7 @@ impl ErrorRecovery {
         });
 
         let tokens = rtf_lexer::tokenize(minimal_rtf)?;
-        Ok((tokens, context.actions))
+        Ok((tokens, context.actions.clone()))
     }
 
     /// Fix parsing issues in tokens

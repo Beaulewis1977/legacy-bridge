@@ -4,8 +4,8 @@
 // including tables, headers, lists, styles, and embedded objects.
 
 use crate::conversion::types::{
-    ConversionError, ConversionResult, RtfDocument, RtfNode, RtfToken,
-    DocumentMetadata, FontInfo, FontFamily, Color, TableRow, TableCell,
+    ConversionResult, RtfDocument, RtfNode, RtfToken,
+    DocumentMetadata, FontInfo, Color, TableRow, TableCell,
 };
 use std::collections::HashMap;
 
@@ -285,7 +285,7 @@ impl FormattingEngine {
             "f" => {
                 if state.in_font_table {
                     // Font definition in font table
-                    if let Some(id) = parameter {
+                    if let Some(_id) = parameter {
                         // Will be populated by subsequent tokens
                     }
                 } else {
@@ -404,7 +404,7 @@ impl FormattingEngine {
     }
 
     /// Process special groups (tables, embedded objects, etc.)
-    fn process_special_group(&self, nodes: &[RtfNode], state: &ParserState) -> Option<RtfNode> {
+    fn process_special_group(&self, _nodes: &[RtfNode], state: &ParserState) -> Option<RtfNode> {
         // Check if this is a table
         if let Some(ref ctx) = state.table_context {
             if !ctx.rows.is_empty() {
