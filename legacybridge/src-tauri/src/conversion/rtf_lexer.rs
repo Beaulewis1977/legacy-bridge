@@ -118,9 +118,15 @@ impl<'a> RtfLexer<'a> {
             self.advance();
         }
 
-        // Read digits
+        // Read digits with length limit to prevent overflow
+        const MAX_DIGITS: usize = 10; // Enough for i32 range
         while let Some(ch) = self.current_char {
             if ch.is_numeric() {
+                if number.len() >= MAX_DIGITS + 1 { // +1 for possible negative sign
+                    return Err(ConversionError::LexerError(
+                        format!("Number too large: {}", number)
+                    ));
+                }
                 number.push(ch);
                 self.advance();
             } else {
@@ -132,10 +138,21 @@ impl<'a> RtfLexer<'a> {
             return Ok(None);
         }
 
-        number
-            .parse::<i32>()
-            .map(Some)
-            .map_err(|_| ConversionError::LexerError(format!("Invalid number: {}", number)))
+        // SECURITY: Parse with bounds checking
+        match number.parse::<i32>() {
+            Ok(n) => {
+                // Additional bounds check for security (-1M to +1M)
+                if n < -1_000_000 || n > 1_000_000 {
+                    return Err(ConversionError::LexerError(
+                        format!("Number {} outside allowed range [-1000000, 1000000]", n)
+                    ));
+                }
+                Ok(Some(n))
+            }
+            Err(_) => Err(ConversionError::LexerError(
+                format!("Invalid number: {}", number)
+            ))
+        }
     }
 
     /// Read a hexadecimal value

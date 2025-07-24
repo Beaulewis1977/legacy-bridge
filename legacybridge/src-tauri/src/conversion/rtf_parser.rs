@@ -57,6 +57,23 @@ impl RtfParser {
 
     /// Parse content within a group
     fn parse_group_content(&mut self) -> ConversionResult<Vec<RtfNode>> {
+        // SECURITY: Check recursion depth to prevent stack overflow
+        const MAX_RECURSION_DEPTH: usize = 50;
+        if self.recursion_depth >= MAX_RECURSION_DEPTH {
+            return Err(ConversionError::ParseError(
+                format!("Maximum recursion depth {} exceeded", MAX_RECURSION_DEPTH)
+            ));
+        }
+        
+        self.recursion_depth += 1;
+        let result = self.parse_group_content_inner();
+        self.recursion_depth -= 1;
+        
+        result
+    }
+    
+    /// Inner group parsing logic
+    fn parse_group_content_inner(&mut self) -> ConversionResult<Vec<RtfNode>> {
         let mut nodes = Vec::new();
         let mut current_paragraph = Vec::new();
 
