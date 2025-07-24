@@ -2,6 +2,8 @@
 
 **A modern, beautiful RTF ↔ Markdown converter specifically designed for legacy systems (VB6, VFP9)**
 
+### documents that MUST be read: legacy-bridge-description.md, claude.md, LEGACYBRIDGE_BUILD_SPEC_2.md, NEW_AGENT_BUILD_PROMPT_2.md
+
 ---
 
 ## 📋 Project Overview
