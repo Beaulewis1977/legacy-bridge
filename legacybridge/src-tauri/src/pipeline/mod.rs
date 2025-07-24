@@ -8,9 +8,11 @@
 //         Legacy Integration → VB6/VFP9 Function Calls → Enterprise Systems
 
 pub mod formatting_engine;
+pub mod formatting_engine_optimized;
 pub mod validation_layer;
 pub mod error_recovery;
 pub mod template_system;
+pub mod concurrent_processor;
 
 #[cfg(test)]
 mod test_pipeline;
@@ -105,6 +107,7 @@ pub enum RecoveryType {
     EncodingFix,
     FormatCorrection,
     MissingDataInsertion,
+    RemoveInvalid,
 }
 
 /// Main Document Processing Pipeline
@@ -326,7 +329,7 @@ impl DocumentPipeline {
 
     /// Pre-validation stage for Markdown
     fn pre_validate_markdown(&self, context: &mut MarkdownPipelineContext) -> ConversionResult<()> {
-        let validator = validation_layer::Validator::new();
+        let _validator = validation_layer::Validator::new();
         // For now, basic validation - check if content is not empty
         if context.markdown_content.trim().is_empty() {
             let result = ValidationResult {

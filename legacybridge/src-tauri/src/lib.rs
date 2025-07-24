@@ -2,3 +2,7 @@
 
 pub mod conversion;
 pub mod pipeline;
+pub mod ffi;
+
+#[cfg(test)]
+pub mod tests;

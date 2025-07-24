@@ -167,9 +167,17 @@ impl<'a> RtfLexer<'a> {
 
     /// Read plain text
     fn read_text(&mut self) -> ConversionResult<RtfToken> {
+        const MAX_TEXT_SIZE: usize = 1_000_000; // 1MB limit
         let mut text = String::new();
 
         while let Some(ch) = self.current_char {
+            // Security: Prevent unbounded string growth
+            if text.len() >= MAX_TEXT_SIZE {
+                return Err(ConversionError::LexerError(
+                    "Text size exceeds maximum allowed (1MB)".to_string()
+                ));
+            }
+            
             match ch {
                 '{' | '}' | '\\' => break,
                 '\n' | '\r' => {

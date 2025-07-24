@@ -4,6 +4,7 @@ pub mod rtf_lexer;
 pub mod rtf_parser;
 pub mod markdown_generator;
 pub mod markdown_parser;
+pub mod markdown_parser_optimized;
 pub mod rtf_generator;
 pub mod types;
 

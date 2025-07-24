@@ -5,7 +5,7 @@
 
 use crate::conversion::types::{
     ConversionError, ConversionResult, RtfDocument, RtfNode, DocumentMetadata,
-    FontInfo, FontFamily, Color,
+    FontInfo, FontFamily,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -435,7 +435,7 @@ impl TemplateSystem {
         content: &mut Vec<RtfNode>,
         transformation: &ContentTransformation,
     ) -> ConversionResult<()> {
-        let style_name = transformation.parameters.get("style")
+        let _style_name = transformation.parameters.get("style")
             .ok_or_else(|| ConversionError::GenerationError(
                 "Style transformation requires 'style' parameter".to_string()
             ))?;
@@ -552,7 +552,7 @@ impl TemplateSystem {
         F: FnMut(&mut RtfNode),
     {
         for node in nodes.iter_mut() {
-            let should_transform = match (target, node) {
+            let should_transform = match (target, &*node) {
                 (TransformTarget::AllHeadings, RtfNode::Heading { .. }) => true,
                 (TransformTarget::HeadingLevel(level), RtfNode::Heading { level: h_level, .. }) => h_level == level,
                 (TransformTarget::AllParagraphs, RtfNode::Paragraph(_)) => true,
@@ -567,12 +567,12 @@ impl TemplateSystem {
 
             // Recurse into children
             match node {
-                RtfNode::Paragraph(children) |
-                RtfNode::Bold(children) |
-                RtfNode::Italic(children) |
-                RtfNode::Underline(children) |
-                RtfNode::Heading { content: children, .. } |
-                RtfNode::ListItem { content: children, .. } => {
+                RtfNode::Paragraph(ref mut children) |
+                RtfNode::Bold(ref mut children) |
+                RtfNode::Italic(ref mut children) |
+                RtfNode::Underline(ref mut children) |
+                RtfNode::Heading { content: ref mut children, .. } |
+                RtfNode::ListItem { content: ref mut children, .. } => {
                     self.transform_nodes_recursive(children, target, &mut transform_fn);
                 }
                 _ => {}

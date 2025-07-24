@@ -1,7 +1,7 @@
 // Markdown Parser - Parses Markdown content into an intermediate document structure
 
-use super::types::{ConversionError, ConversionResult, DocumentMetadata, RtfDocument, RtfNode};
-use pulldown_cmark::{Parser, Event, Tag, TagEnd, CowStr};
+use super::types::{ConversionResult, DocumentMetadata, RtfDocument, RtfNode};
+use pulldown_cmark::{Parser, Event, Tag, CowStr};
 
 /// Markdown Parser
 pub struct MarkdownParser;
@@ -69,7 +69,7 @@ impl MarkdownToRtfConverter {
     fn process_event(&mut self, event: Event) -> ConversionResult<()> {
         match event {
             Event::Start(tag) => self.handle_start_tag(tag)?,
-            Event::End(tag_end) => self.handle_end_tag(tag_end)?,
+            Event::End(tag) => self.handle_end_tag(tag)?,
             Event::Text(text) => self.handle_text(text)?,
             Event::Code(code) => self.handle_code(code)?,
             Event::Html(_) => {}, // Skip HTML for now
@@ -87,7 +87,7 @@ impl MarkdownToRtfConverter {
             Tag::Paragraph => {
                 // Start new paragraph - current_paragraph will collect content
             }
-            Tag::Heading { level, .. } => {
+            Tag::Heading(level, _, _) => {
                 self.current_heading_level = Some(level as u8);
             }
             Tag::BlockQuote => {
@@ -146,9 +146,9 @@ impl MarkdownToRtfConverter {
         Ok(())
     }
 
-    fn handle_end_tag(&mut self, tag_end: TagEnd) -> ConversionResult<()> {
-        match tag_end {
-            TagEnd::Paragraph => {
+    fn handle_end_tag(&mut self, tag: Tag) -> ConversionResult<()> {
+        match tag {
+            Tag::Paragraph => {
                 if !self.current_paragraph.is_empty() {
                     let paragraph_content = std::mem::take(&mut self.current_paragraph);
                     
@@ -171,25 +171,25 @@ impl MarkdownToRtfConverter {
                     }
                 }
             }
-            TagEnd::Heading => {
+            Tag::Heading(..) => {
                 // Handled in paragraph end
             }
-            TagEnd::BlockQuote => {
+            Tag::BlockQuote => {
                 // TODO: Implement blockquotes
             }
-            TagEnd::CodeBlock => {
+            Tag::CodeBlock(_) => {
                 // TODO: Implement code blocks
             }
-            TagEnd::List(_) => {
+            Tag::List(_) => {
                 self.list_stack.pop();
             }
-            TagEnd::Item => {
+            Tag::Item => {
                 // Handled in paragraph end
             }
-            TagEnd::FootnoteDefinition => {
+            Tag::FootnoteDefinition(_) => {
                 // Skip footnotes
             }
-            TagEnd::Table => {
+            Tag::Table(_) => {
                 if let Some(table_state) = self.table_state.take() {
                     if !table_state.rows.is_empty() {
                         self.document.content.push(RtfNode::Table {
@@ -198,12 +198,12 @@ impl MarkdownToRtfConverter {
                     }
                 }
             }
-            TagEnd::TableHead => {
+            Tag::TableHead => {
                 if let Some(ref mut table) = self.table_state {
                     table.in_header = false;
                 }
             }
-            TagEnd::TableRow => {
+            Tag::TableRow => {
                 if let Some(ref mut table) = self.table_state {
                     if !table.current_row.is_empty() {
                         let cells: Vec<super::types::TableCell> = table.current_row
@@ -218,7 +218,7 @@ impl MarkdownToRtfConverter {
                     }
                 }
             }
-            TagEnd::TableCell => {
+            Tag::TableCell => {
                 if let Some(ref mut table) = self.table_state {
                     if !self.current_paragraph.is_empty() {
                         let cell_content = std::mem::take(&mut self.current_paragraph);
@@ -228,19 +228,19 @@ impl MarkdownToRtfConverter {
                     }
                 }
             }
-            TagEnd::Emphasis => {
+            Tag::Emphasis => {
                 self.formatting_stack.retain(|f| !matches!(f, FormattingState::Italic));
             }
-            TagEnd::Strong => {
+            Tag::Strong => {
                 self.formatting_stack.retain(|f| !matches!(f, FormattingState::Bold));
             }
-            TagEnd::Strikethrough => {
+            Tag::Strikethrough => {
                 // Skip strikethrough
             }
-            TagEnd::Link => {
+            Tag::Link { .. } => {
                 // TODO: Implement links
             }
-            TagEnd::Image => {
+            Tag::Image { .. } => {
                 // TODO: Implement images
             }
         }
