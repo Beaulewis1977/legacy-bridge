@@ -3,11 +3,13 @@
 
 mod commands;
 mod conversion;
+mod pipeline;
 
 use commands::{
     get_version_info, markdown_to_rtf, rtf_to_markdown, test_connection,
     read_rtf_file, write_markdown_file, read_file_base64, write_file_base64,
     batch_convert_rtf_to_markdown, rtf_to_markdown_pipeline, read_rtf_file_pipeline,
+    markdown_to_rtf_pipeline, read_markdown_file_pipeline,
 };
 
 fn main() {
@@ -23,7 +25,9 @@ fn main() {
             write_file_base64,
             batch_convert_rtf_to_markdown,
             rtf_to_markdown_pipeline,
-            read_rtf_file_pipeline
+            read_rtf_file_pipeline,
+            markdown_to_rtf_pipeline,
+            read_markdown_file_pipeline
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

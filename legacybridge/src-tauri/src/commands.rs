@@ -1,7 +1,7 @@
 // Tauri commands for RTF/Markdown conversion
 
 use crate::conversion;
-use crate::pipeline::{PipelineConfig, convert_rtf_to_markdown_with_pipeline};
+use crate::pipeline::{PipelineConfig, convert_rtf_to_markdown_with_pipeline, convert_markdown_to_rtf_with_pipeline};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -434,6 +434,101 @@ pub fn read_rtf_file_pipeline(
     }
 }
 
+/// Convert Markdown to RTF using the advanced pipeline
+#[tauri::command]
+pub fn markdown_to_rtf_pipeline(
+    markdown_content: String,
+    config: Option<PipelineConfigRequest>,
+) -> PipelineConversionResponse {
+    // Build pipeline configuration
+    let pipeline_config = if let Some(cfg) = config {
+        PipelineConfig {
+            strict_validation: cfg.strict_validation.unwrap_or(true),
+            auto_recovery: cfg.auto_recovery.unwrap_or(true),
+            template: cfg.template,
+            preserve_formatting: cfg.preserve_formatting.unwrap_or(true),
+            legacy_mode: cfg.legacy_mode.unwrap_or(false),
+        }
+    } else {
+        PipelineConfig::default()
+    };
+
+    // Run conversion through pipeline
+    match convert_markdown_to_rtf_with_pipeline(&markdown_content, Some(pipeline_config)) {
+        Ok((rtf, context)) => {
+            // Convert validation results to DTOs
+            let validation_results = context.validation_results.iter()
+                .map(|v| ValidationResultDto {
+                    level: format!("{:?}", v.level),
+                    code: v.code.clone(),
+                    message: v.message.clone(),
+                    location: v.location.clone(),
+                })
+                .collect();
+
+            // Convert recovery actions to DTOs
+            let recovery_actions = context.recovery_actions.iter()
+                .map(|a| RecoveryActionDto {
+                    action_type: format!("{:?}", a.action_type),
+                    description: a.description.clone(),
+                    applied: a.applied,
+                })
+                .collect();
+
+            PipelineConversionResponse {
+                success: true,
+                markdown: Some(rtf), // Using markdown field for RTF output for compatibility
+                validation_results,
+                recovery_actions,
+                error: None,
+            }
+        }
+        Err(e) => PipelineConversionResponse {
+            success: false,
+            markdown: None,
+            validation_results: Vec::new(),
+            recovery_actions: Vec::new(),
+            error: Some(e.to_string()),
+        },
+    }
+}
+
+/// Read markdown file and convert to RTF using pipeline
+#[tauri::command]
+pub fn read_markdown_file_pipeline(
+    file_path: String,
+    config: Option<PipelineConfigRequest>,
+) -> PipelineConversionResponse {
+    let path = Path::new(&file_path);
+    
+    // Validate file extension
+    let extension = path.extension().and_then(|s| s.to_str());
+    if !matches!(extension, Some("md") | Some("markdown")) {
+        return PipelineConversionResponse {
+            success: false,
+            markdown: None,
+            validation_results: Vec::new(),
+            recovery_actions: Vec::new(),
+            error: Some("File must have .md or .markdown extension".to_string()),
+        };
+    }
+    
+    // Read file content
+    match fs::read_to_string(&path) {
+        Ok(markdown_content) => {
+            // Convert using pipeline
+            markdown_to_rtf_pipeline(markdown_content, config)
+        }
+        Err(e) => PipelineConversionResponse {
+            success: false,
+            markdown: None,
+            validation_results: Vec::new(),
+            recovery_actions: Vec::new(),
+            error: Some(format!("Failed to read file: {}", e)),
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -453,10 +548,31 @@ mod tests {
         let markdown = "# Hello World";
         let response = markdown_to_rtf(markdown.to_string());
         
-        // Currently not implemented, should return error
-        assert!(!response.success);
-        assert!(response.result.is_none());
-        assert!(response.error.is_some());
+        // Now implemented, should succeed
+        assert!(response.success);
+        assert!(response.result.is_some());
+        assert!(response.error.is_none());
+        
+        // Verify RTF structure
+        let rtf = response.result.unwrap();
+        assert!(rtf.contains("{\\rtf1\\ansi"));
+        assert!(rtf.contains("Hello World"));
+    }
+
+    #[test]
+    fn test_markdown_to_rtf_pipeline_command() {
+        let markdown = "**Bold** and *italic* text";
+        let response = markdown_to_rtf_pipeline(markdown.to_string(), None);
+        
+        assert!(response.success);
+        assert!(response.markdown.is_some()); // RTF stored in markdown field for compatibility
+        assert!(response.error.is_none());
+        
+        // Verify RTF structure
+        let rtf = response.markdown.unwrap();
+        assert!(rtf.contains("{\\rtf1\\ansi"));
+        assert!(rtf.contains("Bold"));
+        assert!(rtf.contains("italic"));
     }
 
     #[test]
