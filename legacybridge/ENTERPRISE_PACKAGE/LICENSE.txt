@@ -1,0 +1,81 @@
+LEGACYBRIDGE ENTERPRISE LICENSE AGREEMENT
+Version 1.0 - Effective Date: July 24, 2025
+
+IMPORTANT: READ CAREFULLY BEFORE USING THIS SOFTWARE
+
+This Enterprise License Agreement ("Agreement") is a legal agreement between you 
+(either an individual or a single entity, "Licensee") and the LegacyBridge 
+Development Team ("Licensor") for the LegacyBridge Enterprise Edition software 
+product, which includes computer software and may include associated media, 
+printed materials, and "online" or electronic documentation ("Software").
+
+BY INSTALLING, COPYING, OR OTHERWISE USING THE SOFTWARE, YOU AGREE TO BE BOUND 
+BY THE TERMS OF THIS AGREEMENT. IF YOU DO NOT AGREE TO THE TERMS OF THIS 
+AGREEMENT, DO NOT INSTALL OR USE THE SOFTWARE.
+
+1. GRANT OF LICENSE
+   Subject to the terms and conditions of this Agreement, Licensor hereby grants 
+   to Licensee a non-exclusive, non-transferable license to:
+   a) Install and use the Software on any number of computers within your 
+      organization
+   b) Make copies of the Software for backup and archival purposes
+   c) Integrate the Software into your applications and distribute those 
+      applications to end users
+
+2. RESTRICTIONS
+   Licensee may not:
+   a) Reverse engineer, decompile, or disassemble the Software
+   b) Rent, lease, or lend the Software
+   c) Remove any proprietary notices or labels on the Software
+   d) Use the Software for any unlawful purpose
+
+3. OWNERSHIP
+   The Software is licensed, not sold. Licensor retains all right, title, and 
+   interest in and to the Software, including all copyrights, patents, trade 
+   secrets, trademarks, and other intellectual property rights.
+
+4. LIMITED WARRANTY
+   Licensor warrants that the Software will perform substantially in accordance 
+   with the accompanying documentation for a period of ninety (90) days from the 
+   date of receipt.
+
+5. DISCLAIMER OF WARRANTIES
+   EXCEPT FOR THE LIMITED WARRANTY SET FORTH ABOVE, THE SOFTWARE IS PROVIDED 
+   "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT 
+   LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, 
+   AND NONINFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, 
+   OR CONSEQUENTIAL DAMAGES WHATSOEVER ARISING OUT OF THE USE OF OR INABILITY 
+   TO USE THE SOFTWARE, EVEN IF LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY 
+   OF SUCH DAMAGES.
+
+7. SUPPORT SERVICES
+   Licensor may provide you with support services related to the Software. Use 
+   of support services is governed by the Licensor policies and programs 
+   described in the user manual, in online documentation, and/or in other 
+   Licensor-provided materials.
+
+8. TERMINATION
+   This Agreement is effective until terminated. Your rights under this Agreement 
+   will terminate automatically without notice from Licensor if you fail to 
+   comply with any term(s) of this Agreement.
+
+9. EXPORT RESTRICTIONS
+   You acknowledge that the Software is subject to export jurisdiction. You agree 
+   to comply with all applicable international and national laws that apply to 
+   the Software.
+
+10. GOVERNING LAW
+    This Agreement shall be governed by the laws of the jurisdiction in which 
+    Licensee is located, without regard to conflict of law provisions.
+
+11. ENTIRE AGREEMENT
+    This Agreement constitutes the entire agreement between the parties with 
+    respect to the use of the Software and supersedes all prior or contemporaneous 
+    understandings regarding such subject matter.
+
+Copyright (c) 2025 LegacyBridge Development Team. All rights reserved.
+
+For licensing inquiries, contact: licensing@legacybridge.com
