@@ -1,0 +1,384 @@
+# Production values for LegacyBridge Helm chart
+replicaCount: 3
+
+image:
+  repository: ghcr.io/legacybridge/legacybridge
+  pullPolicy: Always
+  tag: ""  # Override with actual tag
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - NET_BIND_SERVICE
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  metricsPort: 9090
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+  hosts:
+    - host: api.legacybridge.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: legacybridge-tls
+      hosts:
+        - api.legacybridge.io
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+    ephemeral-storage: "1Gi"
+  limits:
+    memory: "2Gi"
+    cpu: "2000m"
+    ephemeral-storage: "2Gi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "1000"
+    - type: Object
+      object:
+        metric:
+          name: queue_depth
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: legacybridge
+        target:
+          type: Value
+          value: "30"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
+
+verticalPodAutoscaler:
+  enabled: true
+  updateMode: "Auto"
+  minAllowed:
+    cpu: 250m
+    memory: 256Mi
+  maxAllowed:
+    cpu: 4000m
+    memory: 4Gi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - legacybridge
+        topologyKey: kubernetes.io/hostname
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node-type
+              operator: In
+              values:
+                - compute-optimized
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: legacybridge
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+  # maxUnavailable: 1
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+    httpHeaders:
+      - name: User-Agent
+        value: "Kubernetes-Health-Check"
+  initialDelaySeconds: 45
+  periodSeconds: 20
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/ready
+    port: http
+    httpHeaders:
+      - name: User-Agent
+        value: "Kubernetes-Ready-Check"
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /api/startup
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 30
+
+env:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  METRICS_PORT: "9090"
+  NODE_OPTIONS: "--max-old-space-size=1536"
+  ENABLE_PROFILING: "true"
+  ENABLE_TRACING: "true"
+
+secrets:
+  DATABASE_URL:
+    secretName: legacybridge-secrets
+    key: database-url
+  REDIS_URL:
+    secretName: legacybridge-secrets
+    key: redis-url
+  JWT_SECRET:
+    secretName: legacybridge-secrets
+    key: jwt-secret
+  ENCRYPTION_KEY:
+    secretName: legacybridge-secrets
+    key: encryption-key
+
+configMap:
+  enabled: true
+  data:
+    app.config.json: |
+      {
+        "api": {
+          "rateLimit": {
+            "windowMs": 60000,
+            "max": 100
+          },
+          "cors": {
+            "origins": ["https://app.legacybridge.io"],
+            "credentials": true
+          }
+        },
+        "features": {
+          "batchProcessing": true,
+          "realtimeSync": true,
+          "advancedTemplates": true
+        }
+      }
+
+persistence:
+  enabled: true
+  storageClass: "fast-ssd"
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /data
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    labels:
+      prometheus: kube-prometheus
+  prometheusRule:
+    enabled: true
+    labels:
+      prometheus: kube-prometheus
+    rules:
+      - alert: LegacyBridgeDown
+        expr: up{job="{{ include \"legacybridge.fullname\" . }}"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LegacyBridge instance {{ $labels.pod }} is down"
+          description: "{{ $labels.pod }} has been down for more than 5 minutes."
+
+logging:
+  enabled: true
+  fluentbit:
+    enabled: true
+    image: fluent/fluent-bit:2.1.10
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+
+lifecycle:
+  preStop:
+    exec:
+      command: ["/bin/sh", "-c", "sleep 15"]
+
+initContainers:
+  - name: migration
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        echo "Running database migrations..."
+        # Add migration commands here
+        echo "Migrations complete"
+    env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: "{{ .Values.secrets.DATABASE_URL.secretName }}"
+            key: "{{ .Values.secrets.DATABASE_URL.key }}"
+
+sidecars:
+  - name: cloud-sql-proxy
+    image: gcr.io/cloudsql-docker/gce-proxy:latest
+    command:
+      - "/cloud_sql_proxy"
+      - "-instances={{ .Values.database.connectionName }}=tcp:5432"
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+
+database:
+  connectionName: "project:region:instance"
+  
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+    existingSecret: redis-auth
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 8Gi
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: 30
+  storage:
+    type: s3
+    bucket: legacybridge-backups
+    region: us-east-1
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+
+priorityClassName: "high-priority"
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 2
+    maxUnavailable: 0

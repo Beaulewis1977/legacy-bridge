@@ -12,43 +12,44 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     // Regex for validating control words (alphanumeric only)
-    static ref CONTROL_WORD_REGEX: Regex = Regex::new(r"^[a-zA-Z][a-zA-Z0-9]*$").unwrap();
+    static ref CONTROL_WORD_REGEX: Regex = Regex::new(r"^[a-zA-Z][a-zA-Z0-9]*$")
+        .expect("Failed to compile control word regex");
     
     // Regex for detecting dangerous patterns
     static ref DANGEROUS_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"\\object").unwrap(),
-        Regex::new(r"\\objdata").unwrap(),
-        Regex::new(r"\\objemb").unwrap(),
-        Regex::new(r"\\objlink").unwrap(),
-        Regex::new(r"\\objautlink").unwrap(),
-        Regex::new(r"\\objsub").unwrap(),
-        Regex::new(r"\\objpub").unwrap(),
-        Regex::new(r"\\objicemb").unwrap(),
-        Regex::new(r"\\objhtml").unwrap(),
-        Regex::new(r"\\objocx").unwrap(),
-        Regex::new(r"\\result").unwrap(),
-        Regex::new(r"\\pict").unwrap(),
-        Regex::new(r"\\field").unwrap(),
-        Regex::new(r"\\fldinst").unwrap(),
-        Regex::new(r"\\fldrslt").unwrap(),
-        Regex::new(r"\\datafield").unwrap(),
-        Regex::new(r"\\datastore").unwrap(),
-        Regex::new(r"\\xe").unwrap(),
-        Regex::new(r"\\tc").unwrap(),
-        Regex::new(r"\\bkmkstart").unwrap(),
-        Regex::new(r"\\bkmkend").unwrap(),
-        Regex::new(r"\\\*\\generator").unwrap(),
+        Regex::new(r"\\object").expect("Failed to compile object regex"),
+        Regex::new(r"\\objdata").expect("Failed to compile objdata regex"),
+        Regex::new(r"\\objemb").expect("Failed to compile objemb regex"),
+        Regex::new(r"\\objlink").expect("Failed to compile objlink regex"),
+        Regex::new(r"\\objautlink").expect("Failed to compile objautlink regex"),
+        Regex::new(r"\\objsub").expect("Failed to compile objsub regex"),
+        Regex::new(r"\\objpub").expect("Failed to compile objpub regex"),
+        Regex::new(r"\\objicemb").expect("Failed to compile objicemb regex"),
+        Regex::new(r"\\objhtml").expect("Failed to compile objhtml regex"),
+        Regex::new(r"\\objocx").expect("Failed to compile objocx regex"),
+        Regex::new(r"\\result").expect("Failed to compile result regex"),
+        Regex::new(r"\\pict").expect("Failed to compile pict regex"),
+        Regex::new(r"\\field").expect("Failed to compile field regex"),
+        Regex::new(r"\\fldinst").expect("Failed to compile fldinst regex"),
+        Regex::new(r"\\fldrslt").expect("Failed to compile fldrslt regex"),
+        Regex::new(r"\\datafield").expect("Failed to compile datafield regex"),
+        Regex::new(r"\\datastore").expect("Failed to compile datastore regex"),
+        Regex::new(r"\\xe").expect("Failed to compile xe regex"),
+        Regex::new(r"\\tc").expect("Failed to compile tc regex"),
+        Regex::new(r"\\bkmkstart").expect("Failed to compile bkmkstart regex"),
+        Regex::new(r"\\bkmkend").expect("Failed to compile bkmkend regex"),
+        Regex::new(r"\\\*\\generator").expect("Failed to compile generator regex"),
     ];
     
     // Regex for script detection in Markdown
     static ref SCRIPT_PATTERNS: Vec<Regex> = vec![
-        Regex::new(r"(?i)<script[^>]*>").unwrap(),
-        Regex::new(r"(?i)javascript:").unwrap(),
-        Regex::new(r"(?i)vbscript:").unwrap(),
-        Regex::new(r"(?i)onload\s*=").unwrap(),
-        Regex::new(r"(?i)onerror\s*=").unwrap(),
-        Regex::new(r"(?i)onclick\s*=").unwrap(),
-        Regex::new(r"(?i)onmouseover\s*=").unwrap(),
+        Regex::new(r"(?i)<script[^>]*>").expect("Failed to compile script regex"),
+        Regex::new(r"(?i)javascript:").expect("Failed to compile javascript regex"),
+        Regex::new(r"(?i)vbscript:").expect("Failed to compile vbscript regex"),
+        Regex::new(r"(?i)onload\s*=").expect("Failed to compile onload regex"),
+        Regex::new(r"(?i)onerror\s*=").expect("Failed to compile onerror regex"),
+        Regex::new(r"(?i)onclick\s*=").expect("Failed to compile onclick regex"),
+        Regex::new(r"(?i)onmouseover\s*=").expect("Failed to compile onmouseover regex"),
     ];
 }
 
@@ -443,10 +444,10 @@ mod tests {
         let validator = InputValidator::new();
         
         // Valid numbers
-        assert_eq!(validator.validate_number(0, "test").unwrap(), 0);
-        assert_eq!(validator.validate_number(100, "test").unwrap(), 100);
-        assert_eq!(validator.validate_number(-100, "test").unwrap(), -100);
-        assert_eq!(validator.validate_number(999999, "test").unwrap(), 999999);
+        assert_eq!(validator.validate_number(0, "test").expect("Should validate 0"), 0);
+        assert_eq!(validator.validate_number(100, "test").expect("Should validate 100"), 100);
+        assert_eq!(validator.validate_number(-100, "test").expect("Should validate -100"), -100);
+        assert_eq!(validator.validate_number(999999, "test").expect("Should validate 999999"), 999999);
         
         // Out of bounds
         assert!(validator.validate_number(2_000_000, "test").is_err());

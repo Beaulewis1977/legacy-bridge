@@ -7,11 +7,28 @@ pub mod markdown_generator;
 pub mod markdown_parser;
 pub mod markdown_parser_optimized;
 pub mod rtf_generator;
+
+// Memory-optimized modules
+pub mod string_interner_optimized;
+pub mod rtf_escape_optimized;
+pub mod rtf_generator_optimized;
+pub mod markdown_parser_optimized_v2;
 pub mod types;
 pub mod security;
 pub mod secure_parser;
 pub mod secure_generator;
 pub mod input_validation;
+pub mod memory_pools;
+pub mod markdown_generator_pooled;
+pub mod rtf_parser_pooled;
+pub mod pooled_converter;
+pub mod pool_monitoring;
+pub mod rtf_lexer_pooled;
+
+// Unified implementation modules
+pub mod unified_config;
+pub mod unified_parser;
+pub mod unified_generator;
 
 #[cfg(test)]
 pub mod malicious_input_tests;
@@ -23,6 +40,11 @@ pub use markdown_parser::MarkdownParser;
 pub use rtf_generator::RtfGenerator;
 pub use secure_parser::SecureRtfParser;
 pub use input_validation::InputValidator;
+
+// Export unified components
+pub use unified_config::{ConversionConfig, SecurityLevel, ConversionConfigBuilder};
+pub use unified_parser::UnifiedParser;
+pub use unified_generator::UnifiedGenerator;
 
 /// Convert RTF content to Markdown
 pub fn rtf_to_markdown(rtf_content: &str) -> ConversionResult<String> {

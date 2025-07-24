@@ -400,7 +400,8 @@ impl FormattingEngine {
         }
         
         // Return the innermost node
-        node.into_iter().next().unwrap()
+        // This is safe because we always start with at least one element
+        node.into_iter().next().expect("Formatted node vector should never be empty")
     }
 
     /// Process special groups (tables, embedded objects, etc.)

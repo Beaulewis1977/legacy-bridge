@@ -139,8 +139,10 @@ impl RateLimiter {
     }
     
     pub fn check_rate_limit(&self) -> Result<(), String> {
-        let mut last_time = self.last_request_time.lock().unwrap();
-        let mut count = self.request_count.lock().unwrap();
+        let mut last_time = self.last_request_time.lock()
+            .map_err(|_| "Failed to acquire rate limiter lock".to_string())?;
+        let mut count = self.request_count.lock()
+            .map_err(|_| "Failed to acquire rate limiter lock".to_string())?;
         
         let now = std::time::Instant::now();
         let elapsed = now.duration_since(*last_time);

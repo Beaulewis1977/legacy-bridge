@@ -76,8 +76,10 @@ module.exports = {
     }
   },
   
-  // Timers
-  timers: 'modern',
+  // Fake timers
+  fakeTimers: {
+    enableGlobally: false
+  },
   
   // Verbose output
   verbose: true,
@@ -86,11 +88,5 @@ module.exports = {
   maxWorkers: '50%',
   
   // Test timeout
-  testTimeout: 30000,
-  
-  // Watch plugins
-  watchPlugins: [
-    'jest-watch-typeahead/filename',
-    'jest-watch-typeahead/testname'
-  ]
+  testTimeout: 30000
 };
