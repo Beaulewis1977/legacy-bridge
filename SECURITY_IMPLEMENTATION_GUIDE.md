@@ -1,5 +1,17 @@
 # Security Implementation Guide for LegacyBridge
 
+## Table of Contents
+- [Overview](#overview)
+- [1. Tauri Security Configuration](#1-tauri-security-configuration)
+  - [Current Implementation](#current-implementation)
+  - [Key Security Features](#key-security-features)
+- [2. Security Module Integration](#2-security-module-integration)
+- [3. Input Validation Best Practices](#3-input-validation-best-practices)
+- [4. XSS Prevention](#4-xss-prevention)
+- [5. Monitoring and Logging](#5-monitoring-and-logging)
+- [6. Security Checklist](#6-security-checklist)
+- [7. Incident Response](#7-incident-response)
+
 ## Overview
 
 This guide provides detailed instructions for implementing and maintaining security measures in the LegacyBridge RTF conversion application.

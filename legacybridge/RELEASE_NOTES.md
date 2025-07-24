@@ -26,6 +26,24 @@
 
 ---
 
+## 📚 Table of Contents
+
+- [Version 1.0.0 - July 24, 2025](#version-100---july-24-2025)
+  - [Overview](#overview)
+  - [Key Features](#key-features)
+  - [Performance Metrics](#performance-metrics)
+  - [Supported Features](#supported-features)
+  - [Platform Compatibility](#platform-compatibility)
+  - [What's New](#whats-new)
+  - [Installation](#installation)
+  - [Migration Guide](#migration-guide)
+  - [Known Issues](#known-issues)
+  - [Acknowledgments](#acknowledgments)
+- [Development Roadmap](#development-roadmap)
+- [Previous Versions](#previous-versions)
+
+---
+
 ## Version 1.0.0 - July 24, 2025
 
 ### Overview

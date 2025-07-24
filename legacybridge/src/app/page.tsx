@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, FileText, Download, Sparkles, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, FileText, Download, Sparkles, CheckCircle2, Archive } from 'lucide-react';
 import { DragDropZone } from '@/components/DragDropZone';
 import { ConversionProgress } from '@/components/ConversionProgress';
 import { PreviewPanel } from '@/components/PreviewPanel';
+import { DownloadManager } from '@/components/DownloadManager';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,16 +15,22 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useFileStore } from '@/lib/stores/files';
 import { tauriApi } from '@/lib/tauri-api';
+import { downloadService } from '@/lib/download-service';
 import { useEffect } from 'react';
+import type { FileWithStatus } from '@/lib/stores/files';
+import type { ConversionResult } from '@/lib/tauri-api';
+import { ErrorBoundary, ConversionErrorBoundary } from '@/components/ErrorBoundary';
+import { logger } from '@/lib/error-logger';
 
 export default function Home() {
   const { files, updateFileStatus, updateFileProgress, clearFiles } = useFileStore();
   const [isConverting, setIsConverting] = useState(false);
-  const [conversionResults, setConversionResults] = useState<any[]>([]);
+  const [conversionResults, setConversionResults] = useState<Array<{ file: FileWithStatus; result: ConversionResult }>>([]);
   const [showPreview, setShowPreview] = useState(true);
   const [selectedFileContent, setSelectedFileContent] = useState<string>('');
-  const [selectedFileType, setSelectedFileType] = useState<'rtf' | 'md'>('rtf');
+  const [selectedFileType, setSelectedFileType] = useState<'rtf' | 'md' | 'markdown'>('rtf');
   const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const [showDownloadManager, setShowDownloadManager] = useState(false);
 
   const handleConvertToMarkdown = useCallback(async () => {
     setIsConverting(true);
@@ -34,18 +41,24 @@ export default function Home() {
       updateFileStatus(file.id, 'converting');
       updateFileProgress(file.id, 0);
 
-      // Simulate progress
-      const progressInterval = setInterval(() => {
+      // Simulate progress with cleanup
+      let progressInterval: NodeJS.Timeout | null = null;
+      progressInterval = setInterval(() => {
         updateFileProgress(file.id, Math.min(90, Math.random() * 100));
       }, 200);
 
       try {
         const result = await tauriApi.convertRtfToMarkdown(file.path);
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
+        updateFileProgress(file.id, 100);
         updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
         results.push({ file, result });
       } catch (error) {
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
+        logger.error('Conversion', 'Failed to convert RTF to Markdown', error, { 
+          fileId: file.id,
+          fileName: file.name 
+        });
         updateFileStatus(file.id, 'error');
       }
     }
@@ -63,18 +76,24 @@ export default function Home() {
       updateFileStatus(file.id, 'converting');
       updateFileProgress(file.id, 0);
 
-      // Simulate progress
-      const progressInterval = setInterval(() => {
+      // Simulate progress with cleanup
+      let progressInterval: NodeJS.Timeout | null = null;
+      progressInterval = setInterval(() => {
         updateFileProgress(file.id, Math.min(90, Math.random() * 100));
       }, 200);
 
       try {
         const result = await tauriApi.convertMarkdownToRtf(file.path);
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
+        updateFileProgress(file.id, 100);
         updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
         results.push({ file, result });
       } catch (error) {
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
+        logger.error('Conversion', 'Failed to convert Markdown to RTF', error, { 
+          fileId: file.id,
+          fileName: file.name 
+        });
         updateFileStatus(file.id, 'error');
       }
     }
@@ -88,7 +107,7 @@ export default function Home() {
   const completedCount = files.filter(f => f.status === 'completed').length;
 
   // Load file content for preview
-  const loadFileContent = useCallback(async (file: any) => {
+  const loadFileContent = useCallback(async (file: FileWithStatus) => {
     try {
       // Read file content using Tauri API
       const response = await tauriApi.readFileContent(file.path);
@@ -98,6 +117,10 @@ export default function Home() {
         setSelectedFileName(file.name);
       }
     } catch (error) {
+      logger.error('FilePreview', 'Failed to load file content', error, { 
+        fileName: file.name,
+        filePath: file.path 
+      });
       console.error('Failed to load file content:', error);
     }
   }, []);
@@ -105,11 +128,15 @@ export default function Home() {
   // Auto-load first file when files are added
   useEffect(() => {
     if (files.length > 0 && showPreview && !selectedFileContent) {
-      loadFileContent(files[0]);
+      const firstFile = files[0];
+      if (firstFile) {
+        loadFileContent(firstFile);
+      }
     }
   }, [files, showPreview, selectedFileContent, loadFileContent]);
 
   return (
+    <ConversionErrorBoundary>
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <div className="container mx-auto px-4 py-12 max-w-5xl">
         {/* Header */}
@@ -233,17 +260,44 @@ export default function Home() {
                 exit={{ opacity: 0, y: 20 }}
               >
                 <ConversionProgress
-                  onDownload={(file) => {
-                    // TODO: Implement download functionality
-                    console.log('Download:', file);
+                  onDownload={async (file) => {
+                    try {
+                      await downloadService.downloadFile(file);
+                    } catch (error) {
+                      logger.error('Download', 'File download failed', error, { 
+                        fileId: file.id,
+                        fileName: file.name 
+                      });
+                      console.error('Download failed:', error);
+                    }
                   }}
                   onPreview={(file) => {
-                    // TODO: Implement preview functionality
-                    console.log('Preview:', file);
+                    if (file.result?.content) {
+                      setSelectedFileContent(file.result.content);
+                      setSelectedFileType(file.result.metadata?.convertedFormat as 'rtf' | 'md' | 'markdown' || 'md');
+                      setSelectedFileName(file.file.name.replace(/\.(rtf|md)$/i, `.${file.result.metadata?.convertedFormat || 'md'}`));
+                      setShowPreview(true);
+                    }
                   }}
-                  onRetry={(file) => {
-                    // TODO: Implement retry functionality
-                    console.log('Retry:', file);
+                  onRetry={async (file) => {
+                    // Re-run conversion for failed file
+                    updateFileStatus(file.id, 'converting');
+                    updateFileProgress(file.id, 0);
+                    
+                    try {
+                      const result = file.file.type === 'rtf' 
+                        ? await tauriApi.convertRtfToMarkdown(file.file.path)
+                        : await tauriApi.convertMarkdownToRtf(file.file.path);
+                        
+                      updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
+                    } catch (error) {
+                      logger.error('Conversion', 'Retry conversion failed', error, { 
+                        fileId: file.id,
+                        fileName: file.file.name,
+                        fileType: file.file.type 
+                      });
+                      updateFileStatus(file.id, 'error');
+                    }
                   }}
                 />
               </motion.div>
@@ -269,9 +323,22 @@ export default function Home() {
                     onCheckedChange={setShowPreview}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {showPreview ? 'Preview enabled' : 'Preview disabled'}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    {showPreview ? 'Preview enabled' : 'Preview disabled'}
+                  </p>
+                  {completedCount > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowDownloadManager(true)}
+                      className="gap-2"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Download Manager ({completedCount})
+                    </Button>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -359,7 +426,25 @@ export default function Home() {
                                   {result.file.name.replace(/\.(rtf|md)$/, '')}
                                   {result.result.metadata?.convertedFormat === 'md' ? '.md' : '.rtf'}
                                 </span>
-                                <Button size="sm" variant="ghost" className="gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="gap-2"
+                                  onClick={async () => {
+                                    const processedFile = files.find(f => f.id === result.file.id);
+                                    if (processedFile) {
+                                      try {
+                                        await downloadService.downloadFile(processedFile);
+                                      } catch (error) {
+                                        logger.error('Download', 'Result download failed', error, { 
+                                          fileId: result.file.id,
+                                          fileName: result.file.name 
+                                        });
+                                        console.error('Download failed:', error);
+                                      }
+                                    }
+                                  }}
+                                >
                                   <Download className="w-4 h-4" />
                                   Download
                                 </Button>
@@ -373,8 +458,41 @@ export default function Home() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Download Manager Modal */}
+          <AnimatePresence>
+            {showDownloadManager && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                onClick={() => setShowDownloadManager(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DownloadManager 
+                    files={files}
+                    onClose={() => setShowDownloadManager(false)}
+                  />
+                  <Button
+                    className="mt-4 w-full"
+                    variant="outline"
+                    onClick={() => setShowDownloadManager(false)}
+                  >
+                    Close
+                  </Button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
+    </ConversionErrorBoundary>
   );
 }

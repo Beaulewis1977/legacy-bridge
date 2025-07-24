@@ -1,5 +1,25 @@
 # LegacyBridge Enterprise Edition v1.0.0
 
+## Table of Contents
+- [High-Performance RTF ↔ Markdown Converter](#high-performance-rtf--markdown-converter)
+- [Package Contents](#package-contents)
+- [Key Features](#key-features)
+- [Quick Start](#quick-start)
+  - [Windows Installation](#windows-installation)
+  - [Linux Installation](#linux-installation)
+  - [Verify Installation](#verify-installation)
+- [Performance Metrics](#performance-metrics)
+- [API Overview](#api-overview)
+- [Integration Examples](#integration-examples)
+  - [Visual Basic 6](#visual-basic-6)
+  - [Visual FoxPro 9](#visual-foxpro-9)
+  - [C/C++](#cc)
+  - [Python](#python)
+- [System Requirements](#system-requirements)
+- [Support](#support)
+- [License](#license)
+- [Version History](#version-history)
+
 ## High-Performance RTF ↔ Markdown Converter
 
 Welcome to LegacyBridge Enterprise Edition - the industry's fastest and most reliable RTF to Markdown conversion solution.

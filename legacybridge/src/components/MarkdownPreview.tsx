@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { sanitizeMarkdown, escapeHtml } from '@/lib/sanitizer';
 
 interface MarkdownPreviewProps {
   content: string;
@@ -22,38 +23,66 @@ export function MarkdownPreview({
     // In production, you'd use a library like react-markdown
     let html = content;
 
-    // Headers
-    html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
-    html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-6 mb-3">$1</h2>');
-    html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>');
+    // Headers - escape content to prevent XSS
+    html = html.replace(/^### (.*$)/gim, (match, header) => {
+      return `<h3 class="text-lg font-semibold mt-4 mb-2">${escapeHtml(header)}</h3>`;
+    });
+    html = html.replace(/^## (.*$)/gim, (match, header) => {
+      return `<h2 class="text-xl font-bold mt-6 mb-3">${escapeHtml(header)}</h2>`;
+    });
+    html = html.replace(/^# (.*$)/gim, (match, header) => {
+      return `<h1 class="text-2xl font-bold mt-8 mb-4">${escapeHtml(header)}</h1>`;
+    });
 
-    // Bold
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>');
-    html = html.replace(/__(.+?)__/g, '<strong class="font-semibold">$1</strong>');
+    // Bold - escape content
+    html = html.replace(/\*\*(.+?)\*\*/g, (match, text) => {
+      return `<strong class="font-semibold">${escapeHtml(text)}</strong>`;
+    });
+    html = html.replace(/__(.+?)__/g, (match, text) => {
+      return `<strong class="font-semibold">${escapeHtml(text)}</strong>`;
+    });
 
-    // Italic
-    html = html.replace(/\*(.+?)\*/g, '<em class="italic">$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em class="italic">$1</em>');
+    // Italic - escape content
+    html = html.replace(/\*(.+?)\*/g, (match, text) => {
+      return `<em class="italic">${escapeHtml(text)}</em>`;
+    });
+    html = html.replace(/_(.+?)_/g, (match, text) => {
+      return `<em class="italic">${escapeHtml(text)}</em>`;
+    });
 
     // Code blocks
     html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
       return `<pre class="bg-muted p-4 rounded-lg overflow-x-auto my-4"><code class="text-sm font-mono">${escapeHtml(code.trim())}</code></pre>`;
     });
 
-    // Inline code
-    html = html.replace(/`(.+?)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+    // Inline code - escape content to prevent XSS
+    html = html.replace(/`(.+?)`/g, (match, code) => {
+      return `<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">${escapeHtml(code)}</code>`;
+    });
 
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:no-underline">$1</a>');
+    // Links - escape content and validate URLs
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+      // Only allow safe URLs
+      if (!/^(https?:\/\/|mailto:|#)/.test(url)) {
+        return escapeHtml(match);
+      }
+      return `<a href="${escapeHtml(url)}" class="text-primary underline hover:no-underline">${escapeHtml(text)}</a>`;
+    });
 
-    // Lists
-    html = html.replace(/^\* (.+)$/gim, '<li class="ml-4 list-disc">$1</li>');
-    html = html.replace(/^\d+\. (.+)$/gim, '<li class="ml-4 list-decimal">$1</li>');
+    // Lists - escape content
+    html = html.replace(/^\* (.+)$/gim, (match, item) => {
+      return `<li class="ml-4 list-disc">${escapeHtml(item)}</li>`;
+    });
+    html = html.replace(/^\d+\. (.+)$/gim, (match, item) => {
+      return `<li class="ml-4 list-decimal">${escapeHtml(item)}</li>`;
+    });
     html = html.replace(/(<li.*<\/li>)\n(?!<li)/g, '$1</ul>\n');
     html = html.replace(/(?<!<\/ul>)\n(<li)/g, '\n<ul class="my-2">$1');
 
-    // Blockquotes
-    html = html.replace(/^> (.+)$/gim, '<blockquote class="border-l-4 border-muted-foreground/30 pl-4 py-1 my-2 text-muted-foreground">$1</blockquote>');
+    // Blockquotes - escape content
+    html = html.replace(/^> (.+)$/gim, (match, quote) => {
+      return `<blockquote class="border-l-4 border-muted-foreground/30 pl-4 py-1 my-2 text-muted-foreground">${escapeHtml(quote)}</blockquote>`;
+    });
 
     // Horizontal rules
     html = html.replace(/^---$/gim, '<hr class="my-4 border-t border-border" />');
@@ -68,7 +97,7 @@ export function MarkdownPreview({
       }
       
       const cellsHtml = cells.map(cell => 
-        `<td class="border border-border px-3 py-2">${cell.trim()}</td>`
+        `<td class="border border-border px-3 py-2">${escapeHtml(cell.trim())}</td>`
       ).join('');
       
       return `<tr>${cellsHtml}</tr>`;
@@ -91,18 +120,6 @@ export function MarkdownPreview({
     return html;
   }, [content]);
 
-  // Escape HTML to prevent XSS
-  function escapeHtml(text: string): string {
-    const map: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-  }
-
   // Add line numbers if requested
   const contentWithLineNumbers = useMemo(() => {
     if (!showLineNumbers || !content) return renderedContent;
@@ -115,7 +132,7 @@ export function MarkdownPreview({
           <span class="select-none text-muted-foreground text-xs font-mono pr-4 min-w-[3ch] text-right">
             ${lineNumber}
           </span>
-          <div class="flex-1">${line || '&nbsp;'}</div>
+          <div class="flex-1">${escapeHtml(line) || '&nbsp;'}</div>
         </div>
       `;
     }).join('');
@@ -133,10 +150,10 @@ export function MarkdownPreview({
     >
       {showLineNumbers ? (
         <div className="font-mono text-sm">
-          <div dangerouslySetInnerHTML={{ __html: contentWithLineNumbers }} />
+          <div dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(contentWithLineNumbers) }} />
         </div>
       ) : (
-        <div dangerouslySetInnerHTML={{ __html: renderedContent }} />
+        <div dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(renderedContent) }} />
       )}
     </div>
   );

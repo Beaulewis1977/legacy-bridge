@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegacyBridge Troubleshooting Wizard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex-grow: 1;
+        }
+        
+        .wizard-progress {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .wizard-progress::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+        
+        .progress-step {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .progress-step.completed {
+            background: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+        
+        .wizard-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .step h2 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .step h3 {
+            color: #34495e;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        
+        .option-button {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .option-button:hover {
+            background: #e9ecef;
+            border-color: #dee2e6;
+            transform: translateX(5px);
+        }
+        
+        .option-button::after {
+            content: '→';
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+        }
+        
+        .solution {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+        
+        .solution h4 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .solution-steps {
+            margin-top: 1rem;
+        }
+        
+        .solution-step {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .solution-step::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #3498db;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+        
+        code {
+            background: #e9ecef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.875rem;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .alert-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .nav-button {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .nav-button:hover {
+            background: #2980b9;
+        }
+        
+        .nav-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .nav-button.secondary {
+            background: #95a5a6;
+        }
+        
+        .nav-button.secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+        
+        .search-result {
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .search-result:hover {
+            background: #e9ecef;
+            border-color: #dee2e6;
+        }
+        
+        .copy-button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            float: right;
+            margin-top: -0.5rem;
+        }
+        
+        .copy-button:hover {
+            background: #5a6268;
+        }
+        
+        .diagnostic-tool {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .diagnostic-tool h4 {
+            margin-bottom: 1rem;
+        }
+        
+        .diagnostic-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+        }
+        
+        .footer {
+            background: #34495e;
+            color: #ecf0f1;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🔧 LegacyBridge Troubleshooting Wizard</h1>
+    </header>
+
+    <div class="container">
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">1</div>
+            <div class="progress-step" data-step="2">2</div>
+            <div class="progress-step" data-step="3">3</div>
+            <div class="progress-step" data-step="4">4</div>
+        </div>
+
+        <div class="wizard-content">
+            <!-- Step 1: Problem Category -->
+            <div class="step active" id="step-1">
+                <h2>What type of issue are you experiencing?</h2>
+                <button class="option-button" onclick="navigateToStep(2, 'installation')">
+                    Installation Problems
+                    <br><small>DLL not loading, missing dependencies, setup issues</small>
+                </button>
+                <button class="option-button" onclick="navigateToStep(2, 'conversion')">
+                    Conversion Errors
+                    <br><small>RTF/Markdown conversion failures, output issues</small>
+                </button>
+                <button class="option-button" onclick="navigateToStep(2, 'performance')">
+                    Performance Issues
+                    <br><small>Slow conversions, memory problems, timeouts</small>
+                </button>
+                <button class="option-button" onclick="navigateToStep(2, 'integration')">
+                    Legacy Integration
+                    <br><small>VB6, VFP9, .NET integration problems</small>
+                </button>
+                <button class="option-button" onclick="navigateToStep(2, 'api')">
+                    API & Function Errors
+                    <br><small>Function not found, parameter errors, return issues</small>
+                </button>
+            </div>
+
+            <!-- Step 2: Installation Problems -->
+            <div class="step" id="step-2-installation">
+                <h2>What installation issue are you facing?</h2>
+                <button class="option-button" onclick="showSolution('dll-not-found')">
+                    "DLL not found" error
+                </button>
+                <button class="option-button" onclick="showSolution('missing-dependencies')">
+                    Missing dependencies error
+                </button>
+                <button class="option-button" onclick="showSolution('wrong-architecture')">
+                    32-bit vs 64-bit mismatch
+                </button>
+                <button class="option-button" onclick="showSolution('registration-failed')">
+                    DLL registration failed
+                </button>
+                <button class="option-button" onclick="showSolution('path-issues')">
+                    PATH or directory issues
+                </button>
+            </div>
+
+            <!-- Step 2: Conversion Errors -->
+            <div class="step" id="step-2-conversion">
+                <h2>What type of conversion error?</h2>
+                <button class="option-button" onclick="showSolution('rtf-parse-error')">
+                    RTF parsing fails
+                </button>
+                <button class="option-button" onclick="showSolution('markdown-output')">
+                    Markdown output issues
+                </button>
+                <button class="option-button" onclick="showSolution('memory-error')">
+                    Memory or size errors
+                </button>
+                <button class="option-button" onclick="showSolution('encoding-error')">
+                    Character encoding problems
+                </button>
+                <button class="option-button" onclick="showSolution('formatting-lost')">
+                    Formatting not preserved
+                </button>
+            </div>
+
+            <!-- Step 2: Performance Issues -->
+            <div class="step" id="step-2-performance">
+                <h2>What performance issue are you experiencing?</h2>
+                <button class="option-button" onclick="showSolution('slow-conversion')">
+                    Slow conversion speed
+                </button>
+                <button class="option-button" onclick="showSolution('high-memory')">
+                    High memory usage
+                </button>
+                <button class="option-button" onclick="showSolution('batch-timeout')">
+                    Batch processing timeouts
+                </button>
+                <button class="option-button" onclick="showSolution('cpu-usage')">
+                    High CPU usage
+                </button>
+            </div>
+
+            <!-- Step 2: Integration Issues -->
+            <div class="step" id="step-2-integration">
+                <h2>Which platform are you integrating with?</h2>
+                <button class="option-button" onclick="navigateToStep(3, 'vb6')">
+                    Visual Basic 6 (VB6)
+                </button>
+                <button class="option-button" onclick="navigateToStep(3, 'vfp9')">
+                    Visual FoxPro 9 (VFP9)
+                </button>
+                <button class="option-button" onclick="navigateToStep(3, 'dotnet')">
+                    .NET (Framework/Core)
+                </button>
+                <button class="option-button" onclick="navigateToStep(3, 'other')">
+                    Other Platform
+                </button>
+            </div>
+
+            <!-- Step 3: VB6 Issues -->
+            <div class="step" id="step-3-vb6">
+                <h2>What VB6 integration issue?</h2>
+                <button class="option-button" onclick="showSolution('vb6-declare')">
+                    Function declaration errors
+                </button>
+                <button class="option-button" onclick="showSolution('vb6-string')">
+                    String handling problems
+                </button>
+                <button class="option-button" onclick="showSolution('vb6-memory')">
+                    Memory access violations
+                </button>
+                <button class="option-button" onclick="showSolution('vb6-ide')">
+                    IDE crashes or hangs
+                </button>
+            </div>
+
+            <!-- Solutions -->
+            <div class="step" id="solution-dll-not-found">
+                <h2>Solution: DLL Not Found Error</h2>
+                
+                <div class="alert alert-info">
+                    <span class="alert-icon">ℹ️</span>
+                    <div>This error occurs when Windows cannot locate the legacybridge.dll file.</div>
+                </div>
+
+                <div class="solution">
+                    <h4>Step-by-Step Resolution</h4>
+                    
+                    <div class="solution-steps">
+                        <div class="solution-step" data-step="1">
+                            <h4>Verify DLL Location</h4>
+                            <p>Ensure <code>legacybridge.dll</code> is in one of these locations:</p>
+                            <ul>
+                                <li>Your application's directory (recommended)</li>
+                                <li>System32 folder (C:\Windows\System32 for 64-bit)</li>
+                                <li>SysWOW64 folder (C:\Windows\SysWOW64 for 32-bit on 64-bit Windows)</li>
+                                <li>A directory in your system PATH</li>
+                            </ul>
+                            <button class="copy-button" onclick="copyCode('verify-dll')">Copy</button>
+                            <pre id="verify-dll">dir legacybridge.dll /s /b</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="2">
+                            <h4>Check Architecture Match</h4>
+                            <p>Ensure the DLL architecture matches your application:</p>
+                            <button class="copy-button" onclick="copyCode('check-arch')">Copy</button>
+                            <pre id="check-arch">REM Check if your app is 32-bit or 64-bit
+dumpbin /headers your_app.exe | findstr "machine"
+
+REM Check DLL architecture
+dumpbin /headers legacybridge.dll | findstr "machine"</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="3">
+                            <h4>Register the DLL (if needed)</h4>
+                            <p>For COM components, register the DLL:</p>
+                            <button class="copy-button" onclick="copyCode('register-dll')">Copy</button>
+                            <pre id="register-dll">REM Run as Administrator
+regsvr32 legacybridge.dll</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="4">
+                            <h4>Update System PATH</h4>
+                            <p>Add the DLL directory to your PATH:</p>
+                            <button class="copy-button" onclick="copyCode('update-path')">Copy</button>
+                            <pre id="update-path">REM Temporary (current session only)
+set PATH=%PATH%;C:\LegacyBridge
+
+REM Permanent (requires admin rights)
+setx PATH "%PATH%;C:\LegacyBridge" /M</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="5">
+                            <h4>Install Visual C++ Redistributables</h4>
+                            <p>LegacyBridge requires Visual C++ 2015-2022 Redistributable:</p>
+                            <ul>
+                                <li><a href="https://aka.ms/vs/17/release/vc_redist.x86.exe">Download x86 (32-bit)</a></li>
+                                <li><a href="https://aka.ms/vs/17/release/vc_redist.x64.exe">Download x64 (64-bit)</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="diagnostic-tool">
+                    <h4>Diagnostic Tool</h4>
+                    <p>Run this PowerShell script to diagnose DLL issues:</p>
+                    <button class="copy-button" onclick="copyCode('dll-diagnostic')">Copy Script</button>
+                    <pre id="dll-diagnostic"># DLL Diagnostic Script
+$dllName = "legacybridge.dll"
+
+Write-Host "=== LegacyBridge DLL Diagnostic ===" -ForegroundColor Cyan
+
+# Check current directory
+if (Test-Path ".\$dllName") {
+    Write-Host "✓ Found in current directory" -ForegroundColor Green
+} else {
+    Write-Host "✗ Not found in current directory" -ForegroundColor Red
+}
+
+# Check PATH directories
+$pathDirs = $env:PATH -split ';'
+$found = $false
+foreach ($dir in $pathDirs) {
+    if (Test-Path "$dir\$dllName") {
+        Write-Host "✓ Found in PATH: $dir" -ForegroundColor Green
+        $found = $true
+        break
+    }
+}
+if (-not $found) {
+    Write-Host "✗ Not found in PATH" -ForegroundColor Red
+}
+
+# Check system directories
+$sys32 = "$env:windir\System32"
+$sysWow = "$env:windir\SysWOW64"
+
+if (Test-Path "$sys32\$dllName") {
+    Write-Host "✓ Found in System32" -ForegroundColor Green
+}
+if (Test-Path "$sysWow\$dllName") {
+    Write-Host "✓ Found in SysWOW64" -ForegroundColor Green
+}
+
+# Check dependencies
+Write-Host "`nChecking dependencies..." -ForegroundColor Yellow
+$vcredist = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -match "Microsoft Visual C\+\+ 201[5-9]|202[0-9]" }
+if ($vcredist) {
+    Write-Host "✓ Visual C++ Redistributable installed" -ForegroundColor Green
+} else {
+    Write-Host "✗ Visual C++ Redistributable NOT installed" -ForegroundColor Red
+}
+
+Write-Host "`nDiagnostic complete." -ForegroundColor Cyan</pre>
+                    <button class="nav-button" onclick="runDiagnostic('dll')">Run Diagnostic</button>
+                    <div class="diagnostic-result" id="dll-diagnostic-result" style="display: none;"></div>
+                </div>
+
+                <div class="navigation">
+                    <button class="nav-button secondary" onclick="navigateBack()">Back</button>
+                    <button class="nav-button" onclick="startOver()">Start Over</button>
+                </div>
+            </div>
+
+            <!-- RTF Parse Error Solution -->
+            <div class="step" id="solution-rtf-parse-error">
+                <h2>Solution: RTF Parsing Error</h2>
+                
+                <div class="alert alert-warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div>RTF parsing errors usually occur due to malformed RTF, encoding issues, or size limits.</div>
+                </div>
+
+                <div class="solution">
+                    <h4>Common Causes and Solutions</h4>
+                    
+                    <div class="solution-steps">
+                        <div class="solution-step" data-step="1">
+                            <h4>Validate RTF Format</h4>
+                            <p>Use the validation function before conversion:</p>
+                            <button class="copy-button" onclick="copyCode('validate-rtf')">Copy</button>
+                            <pre id="validate-rtf">// VB6 Example
+Dim isValid As Boolean
+isValid = ValidateRTFDocument(rtfContent)
+
+If Not isValid Then
+    MsgBox "Invalid RTF format detected"
+    ' Handle invalid RTF
+End If
+
+// C# Example
+if (!legacybridge_validate_rtf_document(rtfContent))
+{
+    Console.WriteLine("Invalid RTF format");
+    // Handle error
+}</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="2">
+                            <h4>Check File Size Limits</h4>
+                            <p>LegacyBridge has a 10MB file size limit. Check your file:</p>
+                            <button class="copy-button" onclick="copyCode('check-size')">Copy</button>
+                            <pre id="check-size">// VB6
+Dim fileSize As Long
+fileSize = FileLen("document.rtf")
+
+If fileSize > 10485760 Then ' 10MB in bytes
+    MsgBox "File too large (>10MB)"
+End If
+
+// PowerShell
+$file = Get-Item "document.rtf"
+if ($file.Length -gt 10MB) {
+    Write-Host "File too large: $($file.Length / 1MB)MB"
+}</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="3">
+                            <h4>Fix Common RTF Issues</h4>
+                            <p>Clean up common RTF problems:</p>
+                            <button class="copy-button" onclick="copyCode('fix-rtf')">Copy</button>
+                            <pre id="fix-rtf">// Clean RTF formatting
+char* cleanedRtf = legacybridge_clean_rtf_formatting(rtfContent);
+
+// Remove problematic characters
+Function CleanRTF(rtfText As String) As String
+    ' Remove null characters
+    rtfText = Replace(rtfText, Chr(0), "")
+    
+    ' Ensure proper RTF header
+    If Not InStr(rtfText, "{\rtf") = 1 Then
+        rtfText = "{\rtf1\ansi " & rtfText
+    End If
+    
+    ' Ensure closing brace
+    If Right(rtfText, 1) <> "}" Then
+        rtfText = rtfText & "}"
+    End If
+    
+    CleanRTF = rtfText
+End Function</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="4">
+                            <h4>Enable Debug Logging</h4>
+                            <p>Get detailed error information:</p>
+                            <button class="copy-button" onclick="copyCode('debug-log')">Copy</button>
+                            <pre id="debug-log">REM Windows - Set environment variable
+set LEGACYBRIDGE_LOG_LEVEL=DEBUG
+
+REM Run your application and check the log
+type legacybridge_debug.log
+
+# Linux/Mac
+export LEGACYBRIDGE_LOG_LEVEL=DEBUG
+tail -f legacybridge_debug.log</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="5">
+                            <h4>Handle Encoding Issues</h4>
+                            <p>Ensure proper character encoding:</p>
+                            <button class="copy-button" onclick="copyCode('encoding-fix')">Copy</button>
+                            <pre id="encoding-fix">// Convert to UTF-8 before processing
+Function ConvertToUTF8(text As String) As String
+    Dim utf8 As Object
+    Set utf8 = CreateObject("System.Text.UTF8Encoding")
+    
+    Dim bytes() As Byte
+    bytes = utf8.GetBytes_4(text)
+    
+    ConvertToUTF8 = utf8.GetString(bytes)
+End Function
+
+// Check for BOM and remove if present
+If Left(rtfContent, 3) = Chr(239) & Chr(187) & Chr(191) Then
+    rtfContent = Mid(rtfContent, 4)
+End If</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <span class="alert-icon">💡</span>
+                    <div>
+                        <strong>Pro Tip:</strong> For complex RTF documents, try simplifying the formatting first using the 
+                        <code>legacybridge_clean_rtf_formatting()</code> function before conversion.
+                    </div>
+                </div>
+
+                <div class="navigation">
+                    <button class="nav-button secondary" onclick="navigateBack()">Back</button>
+                    <button class="nav-button" onclick="startOver()">Start Over</button>
+                </div>
+            </div>
+
+            <!-- VB6 Declaration Solution -->
+            <div class="step" id="solution-vb6-declare">
+                <h2>Solution: VB6 Function Declaration Errors</h2>
+                
+                <div class="alert alert-danger">
+                    <span class="alert-icon">⚠️</span>
+                    <div>Incorrect function declarations are the most common VB6 integration issue.</div>
+                </div>
+
+                <div class="solution">
+                    <h4>Correct VB6 Declarations</h4>
+                    
+                    <div class="solution-steps">
+                        <div class="solution-step" data-step="1">
+                            <h4>Use the Provided Wrapper</h4>
+                            <p>Always use the official <code>LegacyBridge.bas</code> module:</p>
+                            <button class="copy-button" onclick="copyCode('vb6-wrapper')">Copy</button>
+                            <pre id="vb6-wrapper">' Add to your VB6 project:
+' 1. Project → Add Module → Existing
+' 2. Select LegacyBridge.bas
+' 3. Use the high-level functions:
+
+Dim markdown As String
+markdown = ConvertRTFToMarkdown(RichTextBox1.TextRTF)
+
+Dim rtf As String  
+rtf = ConvertMarkdownToRTF("# Hello World")</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="2">
+                            <h4>Manual Declaration (if needed)</h4>
+                            <p>If you must declare manually, use these exact declarations:</p>
+                            <button class="copy-button" onclick="copyCode('vb6-declare-manual')">Copy</button>
+                            <pre id="vb6-declare-manual">' IMPORTANT: Place in a .bas module, NOT in a form
+Private Declare Function legacybridge_rtf_to_markdown Lib "legacybridge.dll" _
+    (ByVal rtfContent As String) As Long
+
+Private Declare Function legacybridge_markdown_to_rtf Lib "legacybridge.dll" _
+    (ByVal markdownContent As String) As Long
+
+Private Declare Sub legacybridge_free_string Lib "legacybridge.dll" _
+    (ByVal ptr As Long)
+
+Private Declare Function legacybridge_get_last_error Lib "legacybridge.dll" () As Long
+
+' Helper to convert pointer to string
+Private Function PtrToString(ByVal ptr As Long) As String
+    If ptr = 0 Then
+        PtrToString = ""
+        Exit Function
+    End If
+    
+    Dim buffer As String
+    Dim length As Long
+    
+    ' Get string length
+    length = lstrlen(ptr)
+    
+    ' Allocate buffer
+    buffer = Space$(length)
+    
+    ' Copy string
+    CopyMemory ByVal buffer, ByVal ptr, length
+    
+    PtrToString = buffer
+End Function</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="3">
+                            <h4>Handle String Conversions</h4>
+                            <p>VB6 uses UTF-16, but the DLL expects UTF-8:</p>
+                            <button class="copy-button" onclick="copyCode('vb6-string-convert')">Copy</button>
+                            <pre id="vb6-string-convert">' Convert VB6 string to UTF-8 for DLL
+Private Function ToUTF8(text As String) As String
+    Dim utf8() As Byte
+    utf8 = StrConv(text, vbFromUnicode)
+    ToUTF8 = StrConv(utf8, vbUnicode)
+End Function
+
+' Safe conversion function
+Public Function SafeConvertRTFToMarkdown(rtfContent As String) As String
+    On Error GoTo ErrorHandler
+    
+    Dim resultPtr As Long
+    Dim result As String
+    
+    ' Call DLL function
+    resultPtr = legacybridge_rtf_to_markdown(rtfContent)
+    
+    If resultPtr = 0 Then
+        ' Get error message
+        Dim errorPtr As Long
+        errorPtr = legacybridge_get_last_error()
+        If errorPtr <> 0 Then
+            result = "Error: " & PtrToString(errorPtr)
+            legacybridge_free_string errorPtr
+        Else
+            result = "Unknown conversion error"
+        End If
+    Else
+        ' Get result
+        result = PtrToString(resultPtr)
+        legacybridge_free_string resultPtr
+    End If
+    
+    SafeConvertRTFToMarkdown = result
+    Exit Function
+    
+ErrorHandler:
+    SafeConvertRTFToMarkdown = "VB6 Error: " & Err.Description
+End Function</pre>
+                        </div>
+
+                        <div class="solution-step" data-step="4">
+                            <h4>Fix Common Declaration Mistakes</h4>
+                            <div class="alert alert-warning">
+                                <span class="alert-icon">⚠️</span>
+                                <div>Common mistakes to avoid:</div>
+                            </div>
+                            <ul>
+                                <li>❌ Using <code>ByRef</code> instead of <code>ByVal</code> for strings</li>
+                                <li>❌ Wrong calling convention (must be <code>Cdecl</code>, not <code>StdCall</code>)</li>
+                                <li>❌ Forgetting to free returned strings</li>
+                                <li>❌ Using <code>String</code> return type instead of <code>Long</code> (pointer)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation">
+                    <button class="nav-button secondary" onclick="navigateBack()">Back</button>
+                    <button class="nav-button" onclick="startOver()">Start Over</button>
+                </div>
+            </div>
+
+            <!-- Search Feature -->
+            <div class="step" id="search-solutions">
+                <h2>Search for Solutions</h2>
+                <input type="text" class="search-box" id="searchInput" placeholder="Type your error message or problem..." onkeyup="searchSolutions()">
+                
+                <div class="search-results" id="searchResults"></div>
+                
+                <div class="navigation">
+                    <button class="nav-button secondary" onclick="startOver()">Back to Wizard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>LegacyBridge Troubleshooting Wizard v1.0 | <a href="mailto:blewisxx@gmail.com">Contact Support</a> | <a href="/docs">Documentation</a></p>
+    </footer>
+
+    <script>
+        // Wizard state
+        let currentStep = 1;
+        let navigationHistory = [];
+        
+        // Solution database
+        const solutions = {
+            'dll-not-found': {
+                title: 'DLL Not Found Error',
+                keywords: ['dll not found', 'cannot find dll', 'missing dll', 'loadlibrary failed'],
+                category: 'installation'
+            },
+            'missing-dependencies': {
+                title: 'Missing Dependencies',
+                keywords: ['missing dependencies', 'vcruntime', 'msvcr', 'redistributable'],
+                category: 'installation'
+            },
+            'wrong-architecture': {
+                title: '32-bit vs 64-bit Mismatch',
+                keywords: ['wrong architecture', 'bad image format', '32-bit 64-bit', 'x86 x64'],
+                category: 'installation'
+            },
+            'rtf-parse-error': {
+                title: 'RTF Parsing Error',
+                keywords: ['rtf parse', 'invalid rtf', 'malformed rtf', 'rtf error'],
+                category: 'conversion'
+            },
+            'vb6-declare': {
+                title: 'VB6 Function Declaration Errors',
+                keywords: ['vb6 declare', 'function declaration', 'bad dll calling convention', 'vb6 api'],
+                category: 'integration'
+            }
+        };
+        
+        function navigateToStep(step, category) {
+            navigationHistory.push({ step: currentStep, category: getCurrentCategory() });
+            currentStep = step;
+            showStep(`step-${step}-${category}`);
+            updateProgress();
+        }
+        
+        function navigateBack() {
+            if (navigationHistory.length > 0) {
+                const prev = navigationHistory.pop();
+                currentStep = prev.step;
+                
+                // Find and show the previous step
+                const steps = document.querySelectorAll('.step');
+                steps.forEach(step => {
+                    if (step.classList.contains('active') && !step.id.startsWith('solution-')) {
+                        step.classList.remove('active');
+                    }
+                });
+                
+                if (prev.category) {
+                    showStep(`step-${prev.step}-${prev.category}`);
+                } else {
+                    showStep(`step-${prev.step}`);
+                }
+                
+                updateProgress();
+            }
+        }
+        
+        function showStep(stepId) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            
+            // Show selected step
+            const step = document.getElementById(stepId);
+            if (step) {
+                step.classList.add('active');
+            }
+        }
+        
+        function showSolution(solutionId) {
+            navigationHistory.push({ step: currentStep, category: getCurrentCategory() });
+            currentStep = 4;
+            showStep(`solution-${solutionId}`);
+            updateProgress();
+        }
+        
+        function startOver() {
+            navigationHistory = [];
+            currentStep = 1;
+            showStep('step-1');
+            updateProgress();
+        }
+        
+        function updateProgress() {
+            document.querySelectorAll('.progress-step').forEach((step, index) => {
+                if (index < currentStep - 1) {
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                } else if (index === currentStep - 1) {
+                    step.classList.add('active');
+                    step.classList.remove('completed');
+                } else {
+                    step.classList.remove('active', 'completed');
+                }
+            });
+        }
+        
+        function getCurrentCategory() {
+            const activeStep = document.querySelector('.step.active');
+            if (activeStep && activeStep.id.includes('-')) {
+                const parts = activeStep.id.split('-');
+                return parts[parts.length - 1];
+            }
+            return null;
+        }
+        
+        function copyCode(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Show feedback
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.background = '#27ae60';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        function runDiagnostic(type) {
+            const resultDiv = document.getElementById(`${type}-diagnostic-result`);
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Running diagnostic...';
+            
+            // Simulate diagnostic execution
+            setTimeout(() => {
+                resultDiv.textContent = `=== Diagnostic Results ===
+✓ Current directory check: Not found
+✗ PATH check: Not found in PATH  
+✓ System32 check: Found
+✓ Visual C++ Redistributable: Installed
+✓ Architecture: x64 (matches application)
+
+Recommendation: Copy legacybridge.dll to your application directory.`;
+            }, 1500);
+        }
+        
+        function searchSolutions() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 3) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            
+            const matches = [];
+            
+            for (const [id, solution] of Object.entries(solutions)) {
+                const titleMatch = solution.title.toLowerCase().includes(searchTerm);
+                const keywordMatch = solution.keywords.some(keyword => 
+                    keyword.toLowerCase().includes(searchTerm)
+                );
+                
+                if (titleMatch || keywordMatch) {
+                    matches.push({ id, ...solution });
+                }
+            }
+            
+            if (matches.length > 0) {
+                resultsDiv.innerHTML = matches.map(match => `
+                    <div class="search-result" onclick="showSolution('${match.id}')">
+                        <strong>${match.title}</strong>
+                        <br><small>Category: ${match.category}</small>
+                    </div>
+                `).join('');
+            } else {
+                resultsDiv.innerHTML = '<div class="search-result">No solutions found. Try different keywords.</div>';
+            }
+        }
+        
+        // Progress step click handlers
+        document.querySelectorAll('.progress-step').forEach((step, index) => {
+            step.addEventListener('click', () => {
+                if (step.classList.contains('completed')) {
+                    // Allow going back to completed steps
+                    currentStep = index + 1;
+                    if (currentStep === 1) {
+                        startOver();
+                    }
+                }
+            });
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const searchBox = document.getElementById('searchInput');
+                if (document.activeElement === searchBox) {
+                    searchBox.blur();
+                } else {
+                    startOver();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

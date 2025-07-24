@@ -1,5 +1,29 @@
 # LegacyBridge DLL Integration Guide
 
+## 📚 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Building the DLL](#building-the-dll)
+- [File Structure](#file-structure)
+- [API Reference](#api-reference)
+  - [Core Functions](#core-functions)
+  - [Error Codes](#error-codes)
+- [VB6 Integration](#vb6-integration)
+  - [Setup](#setup)
+  - [Example Usage](#example-usage)
+  - [Advanced Features](#advanced-features)
+- [VFP9 Integration](#vfp9-integration)
+  - [Setup](#setup-1)
+  - [Example Usage](#example-usage-1)
+  - [Error Handling](#error-handling)
+- [C/C++ Integration](#cc-integration)
+- [Memory Management](#memory-management)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+- [Performance Tips](#performance-tips)
+- [License](#license)
+
 ## Overview
 
 LegacyBridge provides a C-compatible DLL for converting between Markdown and RTF formats, specifically designed for integration with legacy systems like Visual Basic 6 (VB6) and Visual FoxPro 9 (VFP9).

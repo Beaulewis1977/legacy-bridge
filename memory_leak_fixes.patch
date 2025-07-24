@@ -1,0 +1,112 @@
+--- a/legacybridge/src/app/page.tsx
++++ b/legacybridge/src/app/page.tsx
+@@ -1,8 +1,9 @@
+ 'use client';
+ 
+-import { useState, useCallback, useEffect } from 'react';
++import { useState, useCallback, useEffect, useRef } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+ // ... other imports
+ 
+ export default function Home() {
+   const { files, updateFileStatus, updateFileProgress } = useFileStore();
+   const [isConverting, setIsConverting] = useState(false);
+@@ -12,6 +13,9 @@
+   const [selectedFileType, setSelectedFileType] = useState<'rtf' | 'md' | null>(null);
+   const [selectedFileName, setSelectedFileName] = useState<string>('');
+   const [showPreview, setShowPreview] = useState(false);
++  
++  // Track intervals to prevent memory leaks
++  const progressIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+ 
+   const handleConvertToRtf = useCallback(async () => {
+     if (isConverting) return;
+@@ -19,30 +23,39 @@
+     setIsConverting(true);
+     const mdFiles = files.filter(f => f.type === 'md');
+     const results: ConversionResult[] = [];
++    
++    // Clear any existing intervals
++    progressIntervalsRef.current.forEach(interval => clearInterval(interval));
++    progressIntervalsRef.current.clear();
+ 
+     for (const file of mdFiles) {
+       updateFileStatus(file.id, 'converting');
+       updateFileProgress(file.id, 0);
+ 
+       // Simulate progress
+       const progressInterval = setInterval(() => {
+-        updateFileProgress(file.id, Math.min(90, Math.random() * 100));
++        updateFileProgress(file.id, prev => Math.min(90, prev + 10));
+       }, 200);
++      
++      // Store interval reference
++      progressIntervalsRef.current.set(file.id, progressInterval);
+ 
+       try {
+         const result = await tauriApi.convertMarkdownToRtf(file.path);
+         clearInterval(progressInterval);
++        progressIntervalsRef.current.delete(file.id);
+         updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
+         results.push({ file, result });
+       } catch (error) {
+         clearInterval(progressInterval);
++        progressIntervalsRef.current.delete(file.id);
+         updateFileStatus(file.id, 'error');
+       }
+     }
+ 
+     setConversionResults(results);
+     setIsConverting(false);
+   }, [files, updateFileStatus, updateFileProgress]);
+ 
+   const handleConvertToMarkdown = useCallback(async () => {
+     if (isConverting) return;
+@@ -50,30 +63,45 @@
+     setIsConverting(true);
+     const rtfFiles = files.filter(f => f.type === 'rtf');
+     const results: ConversionResult[] = [];
++    
++    // Clear any existing intervals
++    progressIntervalsRef.current.forEach(interval => clearInterval(interval));
++    progressIntervalsRef.current.clear();
+ 
+     for (const file of rtfFiles) {
+       updateFileStatus(file.id, 'converting');
+       updateFileProgress(file.id, 0);
+ 
+       // Simulate progress
+       const progressInterval = setInterval(() => {
+-        updateFileProgress(file.id, Math.min(90, Math.random() * 100));
++        updateFileProgress(file.id, prev => Math.min(90, prev + 10));
+       }, 200);
++      
++      // Store interval reference
++      progressIntervalsRef.current.set(file.id, progressInterval);
+ 
+       try {
+         const result = await tauriApi.convertRtfToMarkdown(file.path);
+         clearInterval(progressInterval);
++        progressIntervalsRef.current.delete(file.id);
+         updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
+         results.push({ file, result });
+       } catch (error) {
+         clearInterval(progressInterval);
++        progressIntervalsRef.current.delete(file.id);
+         updateFileStatus(file.id, 'error');
+       }
+     }
+ 
+     setConversionResults(results);
+     setIsConverting(false);
+   }, [files, updateFileStatus, updateFileProgress]);
++  
++  // Cleanup intervals on unmount
++  useEffect(() => {
++    return () => {
++      progressIntervalsRef.current.forEach(interval => clearInterval(interval));
++      progressIntervalsRef.current.clear();
++    };
++  }, []);
+ 
+ // ... rest of the component
