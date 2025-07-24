@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { logger, startTimer } from './error-logger';
 
 // Types for conversion results and errors
 export interface ConversionResult {
@@ -75,9 +76,18 @@ export interface StreamUpdate {
 export const tauriApi = {
   // Convert RTF to Markdown
   async convertRtfToMarkdown(filePath: string): Promise<ConversionResult> {
+    const endTimer = startTimer('convertRtfToMarkdown');
+    logger.info('Conversion', 'Starting RTF to Markdown conversion', { filePath });
+    
     try {
       const result = await invoke<string>('convert_rtf_to_markdown', {
         filePath
+      });
+      
+      endTimer();
+      logger.info('Conversion', 'RTF to Markdown conversion successful', { 
+        filePath,
+        resultLength: result.length 
       });
       
       return {
@@ -90,6 +100,9 @@ export const tauriApi = {
         }
       };
     } catch (error) {
+      endTimer();
+      logger.error('Conversion', 'RTF to Markdown conversion failed', error, { filePath });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -99,9 +112,18 @@ export const tauriApi = {
 
   // Convert Markdown to RTF
   async convertMarkdownToRtf(filePath: string): Promise<ConversionResult> {
+    const endTimer = startTimer('convertMarkdownToRtf');
+    logger.info('Conversion', 'Starting Markdown to RTF conversion', { filePath });
+    
     try {
       const result = await invoke<string>('convert_markdown_to_rtf', {
         filePath
+      });
+      
+      endTimer();
+      logger.info('Conversion', 'Markdown to RTF conversion successful', { 
+        filePath,
+        resultLength: result.length 
       });
       
       return {
@@ -114,6 +136,9 @@ export const tauriApi = {
         }
       };
     } catch (error) {
+      endTimer();
+      logger.error('Conversion', 'Markdown to RTF conversion failed', error, { filePath });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -126,6 +151,12 @@ export const tauriApi = {
     filePaths: string[],
     targetFormat: 'rtf' | 'md'
   ): Promise<ConversionResult[]> {
+    const endTimer = startTimer('batchConvert');
+    logger.info('Conversion', 'Starting batch conversion', { 
+      fileCount: filePaths.length,
+      targetFormat 
+    });
+    
     const results = await Promise.all(
       filePaths.map(path =>
         targetFormat === 'md'
@@ -133,6 +164,15 @@ export const tauriApi = {
           : this.convertMarkdownToRtf(path)
       )
     );
+    
+    endTimer();
+    const successCount = results.filter(r => r.success).length;
+    logger.info('Conversion', 'Batch conversion completed', { 
+      totalFiles: filePaths.length,
+      successCount,
+      failureCount: filePaths.length - successCount,
+      targetFormat
+    });
     
     return results;
   },
@@ -143,6 +183,12 @@ export const tauriApi = {
     originalPath: string,
     format: 'rtf' | 'md'
   ): Promise<{ success: boolean; path?: string; error?: string }> {
+    logger.info('FileOperation', 'Saving converted file', { 
+      originalPath,
+      format,
+      contentLength: content.length 
+    });
+    
     try {
       const savedPath = await invoke<string>('save_converted_file', {
         content,
@@ -150,11 +196,22 @@ export const tauriApi = {
         format
       });
       
+      logger.info('FileOperation', 'File saved successfully', { 
+        originalPath,
+        savedPath,
+        format 
+      });
+      
       return {
         success: true,
         path: savedPath
       };
     } catch (error) {
+      logger.error('FileOperation', 'Failed to save file', error, { 
+        originalPath,
+        format 
+      });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -168,18 +225,45 @@ export const tauriApi = {
     sourceType: 'rtf' | 'markdown',
     config?: PipelineConfig
   ): Promise<PipelineConversionResult> {
+    const endTimer = startTimer('convertWithPipeline');
+    logger.info('Pipeline', 'Starting pipeline conversion', { 
+      sourceType,
+      contentLength: content.length,
+      config 
+    });
+    
     try {
       if (sourceType === 'rtf') {
         const result = await invoke<PipelineConversionResult>('rtf_to_markdown_pipeline', {
           rtfContent: content,
           config
         });
+        
+        endTimer();
+        
+        if (result.validation_results && result.validation_results.length > 0) {
+          logger.warn('Pipeline', 'Validation issues found', { 
+            issueCount: result.validation_results.length,
+            issues: result.validation_results 
+          });
+        }
+        
+        if (result.recovery_actions && result.recovery_actions.length > 0) {
+          logger.info('Pipeline', 'Recovery actions applied', { 
+            actionCount: result.recovery_actions.length,
+            actions: result.recovery_actions 
+          });
+        }
+        
         return result;
       } else {
         // For now, markdown to RTF doesn't use pipeline
         const result = await invoke<string>('markdown_to_rtf', {
           markdownContent: content
         });
+        
+        endTimer();
+        
         return {
           success: true,
           markdown: result,
@@ -188,6 +272,12 @@ export const tauriApi = {
         };
       }
     } catch (error) {
+      endTimer();
+      logger.error('Pipeline', 'Pipeline conversion failed', error, { 
+        sourceType,
+        config 
+      });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -226,9 +316,24 @@ export const tauriApi = {
   ): Promise<() => void> {
     // Create a unique channel for this conversion
     const channelId = `conversion-${Date.now()}-${Math.random()}`;
+    logger.info('Streaming', 'Starting stream conversion', { 
+      channelId,
+      sourceType,
+      contentLength: content.length 
+    });
     
     // Listen for updates
     const unlisten = await listen<StreamUpdate>(channelId, (event) => {
+      if (event.payload.type === 'error') {
+        logger.error('Streaming', 'Stream conversion error', event.payload.data.error, { 
+          channelId 
+        });
+      } else if (event.payload.type === 'validation') {
+        logger.warn('Streaming', 'Stream validation issues', { 
+          channelId,
+          issues: event.payload.data.validation 
+        });
+      }
       onUpdate(event.payload);
     });
 
@@ -238,6 +343,11 @@ export const tauriApi = {
       sourceType,
       channelId
     }).catch(error => {
+      logger.error('Streaming', 'Failed to start stream conversion', error, { 
+        channelId,
+        sourceType 
+      });
+      
       onUpdate({
         type: 'error',
         data: { error: error.message },
@@ -247,6 +357,7 @@ export const tauriApi = {
 
     // Return cleanup function
     return () => {
+      logger.info('Streaming', 'Cleaning up stream conversion', { channelId });
       unlisten();
     };
   },
@@ -278,6 +389,8 @@ export const tauriApi = {
 
   // Read file content directly
   async readFileContent(filePath: string): Promise<{ success: boolean; content?: string; error?: string }> {
+    logger.info('FileOperation', 'Reading file content', { filePath });
+    
     try {
       // Use the existing read_rtf_file command which returns content
       const response = await invoke<{ success: boolean; content?: string; error?: string }>('read_rtf_file', {
@@ -292,6 +405,10 @@ export const tauriApi = {
         
         if (rtfContent.success && rtfContent.content) {
           const content = atob(rtfContent.content);
+          logger.info('FileOperation', 'File read successfully', { 
+            filePath,
+            contentLength: content.length 
+          });
           return {
             success: true,
             content
@@ -306,17 +423,25 @@ export const tauriApi = {
       
       if (base64Response.success && base64Response.content) {
         const content = atob(base64Response.content);
+        logger.info('FileOperation', 'File read successfully via base64', { 
+          filePath,
+          contentLength: content.length 
+        });
         return {
           success: true,
           content
         };
       } else {
+        logger.error('FileOperation', 'Failed to read file', new Error(base64Response.error || 'Unknown error'), { 
+          filePath 
+        });
         return {
           success: false,
           error: base64Response.error || 'Failed to read file'
         };
       }
     } catch (error) {
+      logger.error('FileOperation', 'Exception while reading file', error, { filePath });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to read file'

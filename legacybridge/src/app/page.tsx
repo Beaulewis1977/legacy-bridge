@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 import type { FileWithStatus } from '@/lib/stores/files';
 import type { ConversionResult } from '@/lib/tauri-api';
 import { ErrorBoundary, ConversionErrorBoundary } from '@/components/ErrorBoundary';
+import { logger } from '@/lib/error-logger';
 
 export default function Home() {
   const { files, updateFileStatus, updateFileProgress, clearFiles } = useFileStore();
@@ -54,6 +55,10 @@ export default function Home() {
         results.push({ file, result });
       } catch (error) {
         if (progressInterval) clearInterval(progressInterval);
+        logger.error('Conversion', 'Failed to convert RTF to Markdown', error, { 
+          fileId: file.id,
+          fileName: file.name 
+        });
         updateFileStatus(file.id, 'error');
       }
     }
@@ -85,6 +90,10 @@ export default function Home() {
         results.push({ file, result });
       } catch (error) {
         if (progressInterval) clearInterval(progressInterval);
+        logger.error('Conversion', 'Failed to convert Markdown to RTF', error, { 
+          fileId: file.id,
+          fileName: file.name 
+        });
         updateFileStatus(file.id, 'error');
       }
     }
@@ -108,6 +117,10 @@ export default function Home() {
         setSelectedFileName(file.name);
       }
     } catch (error) {
+      logger.error('FilePreview', 'Failed to load file content', error, { 
+        fileName: file.name,
+        filePath: file.path 
+      });
       console.error('Failed to load file content:', error);
     }
   }, []);
@@ -251,6 +264,10 @@ export default function Home() {
                     try {
                       await downloadService.downloadFile(file);
                     } catch (error) {
+                      logger.error('Download', 'File download failed', error, { 
+                        fileId: file.id,
+                        fileName: file.name 
+                      });
                       console.error('Download failed:', error);
                     }
                   }}
@@ -274,6 +291,11 @@ export default function Home() {
                         
                       updateFileStatus(file.id, result.success ? 'completed' : 'error', result);
                     } catch (error) {
+                      logger.error('Conversion', 'Retry conversion failed', error, { 
+                        fileId: file.id,
+                        fileName: file.file.name,
+                        fileType: file.file.type 
+                      });
                       updateFileStatus(file.id, 'error');
                     }
                   }}
@@ -414,6 +436,10 @@ export default function Home() {
                                       try {
                                         await downloadService.downloadFile(processedFile);
                                       } catch (error) {
+                                        logger.error('Download', 'Result download failed', error, { 
+                                          fileId: result.file.id,
+                                          fileName: result.file.name 
+                                        });
                                         console.error('Download failed:', error);
                                       }
                                     }

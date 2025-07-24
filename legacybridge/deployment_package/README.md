@@ -1,5 +1,19 @@
 # LegacyBridge DLL Deployment Package
 
+## Table of Contents
+- [Contents](#contents)
+  - [Directory Structure](#directory-structure)
+- [Quick Start](#quick-start)
+  - [For VB6 Developers](#for-vb6-developers)
+  - [For VFP9 Developers](#for-vfp9-developers)
+- [Features](#features)
+- [System Requirements](#system-requirements)
+- [Function Summary](#function-summary)
+- [Testing](#testing)
+- [Version](#version)
+- [Support](#support)
+- [License](#license)
+
 ## Contents
 
 This deployment package contains everything needed to integrate LegacyBridge into VB6 and VFP9 applications.

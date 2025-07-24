@@ -1,5 +1,21 @@
 # LegacyBridge Documentation
 
+## Table of Contents
+- [Welcome](#welcome)
+- [Documentation Structure](#documentation-structure)
+  - [🚀 Getting Started](#-getting-started)
+  - [🔌 API Documentation](#-api-documentation)
+  - [📚 Integration Guides](#-integration-guides)
+  - [🏗️ Architecture Documentation](#️-architecture-documentation)
+  - [🔧 Troubleshooting](#-troubleshooting)
+  - [🎥 Video Tutorials](#-video-tutorials)
+  - [👨‍💻 Development](#-development)
+- [Quick Links](#quick-links)
+- [Documentation Coverage](#documentation-coverage)
+- [Search Documentation](#search-documentation)
+
+## Welcome
+
 Welcome to the comprehensive documentation for LegacyBridge - the enterprise-grade RTF ↔ Markdown converter.
 
 ## Documentation Structure

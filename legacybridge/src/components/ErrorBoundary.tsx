@@ -5,6 +5,7 @@ import { AlertCircle, RefreshCw, Home, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert-dialog';
+import { logger } from '@/lib/error-logger';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -118,6 +119,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       console.error('Error Boundary caught:', error, errorInfo);
     }
 
+    // Log to our error logger
+    logger.fatal('ErrorBoundary', 'Unhandled error caught by error boundary', error, {
+      errorId,
+      componentStack: errorInfo.componentStack,
+      url: window.location.href,
+      userAgent: navigator.userAgent
+    });
+
     // Report to error tracking service
     this.reportError(error, errorInfo, errorId);
 
@@ -204,6 +213,14 @@ export class ConversionErrorBoundary extends Component<PropsWithChildren, ErrorB
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Conversion Error:', error, errorInfo);
+    
+    // Log to our error logger
+    logger.error('ConversionBoundary', 'Conversion error caught by error boundary', error, {
+      errorId: this.state.errorId,
+      componentStack: errorInfo.componentStack,
+      errorType: 'conversion_error'
+    });
+    
     this.reportConversionError(error, errorInfo);
   }
 
@@ -265,6 +282,10 @@ export class ConversionErrorBoundary extends Component<PropsWithChildren, ErrorB
 // Hook for programmatic error handling
 export function useErrorHandler() {
   return (error: Error) => {
+    // Log the error before throwing
+    logger.error('ProgrammaticError', 'Error thrown programmatically', error, {
+      source: 'useErrorHandler'
+    });
     throw error;
   };
 }

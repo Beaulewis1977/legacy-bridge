@@ -1,5 +1,21 @@
 # Getting Started with LegacyBridge
 
+## Table of Contents
+- [What is LegacyBridge?](#what-is-legacybridge)
+- [Quick Navigation](#quick-navigation)
+  - [🚀 For Immediate Start](#-for-immediate-start)
+  - [💻 Installation Guides](#-installation-guides)
+  - [🎯 Choose Your Path](#-choose-your-path)
+- [System Requirements](#system-requirements)
+  - [Minimum Requirements](#minimum-requirements)
+  - [Recommended Specifications](#recommended-specifications)
+- [VB6 Quick Start](#vb6-quick-start)
+- [VFP9 Quick Start](#vfp9-quick-start)
+- [.NET Quick Start](#net-quick-start)
+- [Key Features at a Glance](#key-features-at-a-glance)
+- [Next Steps](#next-steps)
+- [Need Help?](#need-help)
+
 Welcome to LegacyBridge! This guide will help you get up and running with the world's fastest RTF ↔ Markdown converter in just a few minutes.
 
 ## What is LegacyBridge?

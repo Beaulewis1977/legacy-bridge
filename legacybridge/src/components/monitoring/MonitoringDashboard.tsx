@@ -2,19 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { BuildProgressRing } from './BuildProgressRing';
 import { PerformanceChart } from './PerformanceChart';
 import { FunctionCallMatrix } from './FunctionCallMatrix';
 import { SystemHealthCard } from './SystemHealthCard';
 import { LogStreamViewer } from './LogStreamViewer';
+import ErrorLogViewer from '../ErrorLogViewer';
 import { 
   Activity, 
   BarChart3, 
   Database, 
   FileCode2, 
   Gauge, 
-  Server 
+  Server,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 export interface BuildStatus {
@@ -102,7 +108,7 @@ export function MonitoringDashboard({
     services: []
   }
 }: MonitoringDashboardProps) {
-  const [selectedMetric, setSelectedMetric] = useState<'performance' | 'functions' | 'logs'>('performance');
+  const [selectedMetric, setSelectedMetric] = useState<'performance' | 'functions' | 'logs' | 'errors'>('performance');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Auto-refresh data
@@ -251,6 +257,7 @@ export function MonitoringDashboard({
                 <TabsTrigger value="performance">Performance</TabsTrigger>
                 <TabsTrigger value="functions">Functions</TabsTrigger>
                 <TabsTrigger value="logs">Logs</TabsTrigger>
+                <TabsTrigger value="errors">Error Logs</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -287,6 +294,16 @@ export function MonitoringDashboard({
                 <LogStreamViewer />
               </motion.div>
             )}
+            {selectedMetric === 'errors' && (
+              <motion.div
+                key="errors"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <ErrorLogViewer embedded maxHeight="600px" />
+              </motion.div>
+            )}
           </AnimatePresence>
         </CardContent>
       </Card>
@@ -298,10 +315,3 @@ export function MonitoringDashboard({
     </motion.div>
   );
 }
-
-// Helper function
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Maximize2, Minimize2 } from 'lucide-react';
