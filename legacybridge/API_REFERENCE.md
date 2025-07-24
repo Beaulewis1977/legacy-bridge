@@ -1,18 +1,46 @@
-# LegacyBridge API Reference
+# 🔌 LegacyBridge API Reference
 
-## Table of Contents
+*Complete documentation for all 29 API functions*
 
-1. [Overview](#overview)
-2. [Error Codes](#error-codes)
-3. [Core Conversion Functions](#core-conversion-functions)
-4. [File Operations](#file-operations)
-5. [Validation Functions](#validation-functions)
-6. [Batch Processing](#batch-processing)
-7. [Text Processing](#text-processing)
-8. [Template Functions](#template-functions)
-9. [Data Import/Export](#data-importexport)
-10. [Utility Functions](#utility-functions)
-11. [Language-Specific Wrappers](#language-specific-wrappers)
+---
+
+## 📚 Navigation
+
+**🏠 [← Back to Main README](README.md)**
+
+### 📋 Documentation Links
+- **[📖 User Guide](USER_GUIDE.md)** - Complete usage guide with examples
+- **[🚀 Installation Guide](ENTERPRISE_INSTALLATION_GUIDE.md)** - Enterprise deployment instructions
+- **[🐛 Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
+- **[📝 Release Notes](RELEASE_NOTES.md)** - Version history and changes
+
+---
+
+## 📚 Table of Contents
+
+1. [🎯 Overview](#-overview)
+2. [❌ Error Codes](#-error-codes)
+3. [🔄 Core Conversion Functions](#-core-conversion-functions)
+4. [📁 File Operations](#-file-operations)
+5. [🔍 Validation Functions](#-validation-functions)
+6. [📦 Batch Processing](#-batch-processing)
+7. [✏️ Text Processing](#️-text-processing)
+8. [🎨 Template Functions](#-template-functions)
+9. [📊 Data Import/Export](#-data-importexport)
+10. [🔧 Utility Functions](#-utility-functions)
+11. [💻 Language-Specific Wrappers](#-language-specific-wrappers)
+
+---
+
+## 👨‍💻 About the Developer
+
+**Built with ❤️ by [Beau Lewis](mailto:blewisxx@gmail.com)**
+
+*If LegacyBridge has helped you, consider supporting the project:*
+- ☕ **[Ko-fi](https://ko-fi.com/beaulewis)** - Buy me a coffee
+- 💳 **[Venmo](https://venmo.com/beauintulsa)** - Quick thanks
+
+---
 
 ## Overview
 

@@ -1,6 +1,32 @@
-# LegacyBridge User Guide
+# 📖 LegacyBridge User Guide
 
-## Table of Contents
+*Complete usage guide with practical examples*
+
+---
+
+## 📚 Navigation
+
+**🏠 [← Back to Main README](README.md)**
+
+### 📋 Documentation Links
+- **[🔌 API Reference](API_REFERENCE.md)** - Detailed documentation for all 29 functions
+- **[🚀 Installation Guide](ENTERPRISE_INSTALLATION_GUIDE.md)** - Enterprise deployment instructions
+- **[🐛 Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
+- **[📝 Release Notes](RELEASE_NOTES.md)** - Version history and changes
+
+---
+
+## 👨‍💻 About the Developer
+
+**Built with ❤️ by [Beau Lewis](mailto:blewisxx@gmail.com)**
+
+*If LegacyBridge has helped you, consider supporting the project:*
+- ☕ **[Ko-fi](https://ko-fi.com/beaulewis)** - Buy me a coffee  
+- 💳 **[Venmo](https://venmo.com/beauintulsa)** - Quick thanks
+
+---
+
+## 📚 Table of Contents
 
 1. [Introduction](#introduction)
 2. [Getting Started](#getting-started)
