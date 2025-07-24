@@ -29,7 +29,6 @@ ahash = "0.8"
 smallvec = "1.11"
 bumpalo = "3.14"
 crossbeam-channel = "0.5"
-parking_lot = "0.12"
 num_cpus = "1.16"
 tokio = { version = "1.35", features = ["rt-multi-thread", "time"], optional = true }
 lazy_static = "1.4"

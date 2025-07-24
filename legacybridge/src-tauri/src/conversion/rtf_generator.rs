@@ -1,6 +1,15 @@
 // RTF Generator - Converts RTF document structure to RTF format
 
-use super::types::{ConversionResult, RtfDocument, RtfNode, TableCell, TableRow};
+use super::types::{ConversionError, ConversionResult, RtfDocument, RtfNode, TableCell, TableRow};
+use std::cell::Cell;
+
+// SECURITY: Recursion depth tracking
+const MAX_RECURSION_DEPTH: usize = 50;
+const MAX_OUTPUT_SIZE: usize = 100 * 1024 * 1024; // 100MB
+
+thread_local! {
+    static RECURSION_DEPTH: Cell<usize> = Cell::new(0);
+}
 
 /// RTF Generator
 pub struct RtfGenerator;
@@ -33,16 +42,61 @@ impl RtfGenerator {
 
     /// Generate RTF for a single node
     fn generate_node(node: &RtfNode, output: &mut String, depth: usize) -> ConversionResult<()> {
+        // SECURITY: Check recursion depth
+        if depth >= MAX_RECURSION_DEPTH {
+            return Err(ConversionError::GenerationError(
+                format!("Maximum recursion depth {} exceeded", MAX_RECURSION_DEPTH)
+            ));
+        }
+        
+        // SECURITY: Check output size to prevent memory exhaustion
+        if output.len() > MAX_OUTPUT_SIZE {
+            return Err(ConversionError::GenerationError(
+                format!("Output size exceeds maximum allowed ({} bytes)", MAX_OUTPUT_SIZE)
+            ));
+        }
+        
+        // SECURITY: Track thread-local recursion depth
+        RECURSION_DEPTH.with(|depth_cell| {
+            let current = depth_cell.get();
+            if current >= MAX_RECURSION_DEPTH {
+                return Err(ConversionError::GenerationError(
+                    "Stack overflow prevention: recursion too deep".to_string()
+                ));
+            }
+            depth_cell.set(current + 1);
+            Ok(())
+        })?;
+        
+        let result = Self::generate_node_inner(node, output, depth);
+        
+        // SECURITY: Always decrement recursion depth
+        RECURSION_DEPTH.with(|depth_cell| {
+            depth_cell.set(depth_cell.get().saturating_sub(1));
+        });
+        
+        result
+    }
+    
+    /// Inner node generation logic
+    fn generate_node_inner(node: &RtfNode, output: &mut String, depth: usize) -> ConversionResult<()> {
         match node {
             RtfNode::Text(text) => {
                 output.push_str(&Self::escape_rtf_text(text));
             }
             RtfNode::Paragraph(nodes) => {
+                // SECURITY: Limit number of nodes in a paragraph
+                if nodes.len() > 10000 {
+                    return Err(ConversionError::GenerationError(
+                        "Paragraph contains too many nodes".to_string()
+                    ));
+                }
+                
                 for (i, node) in nodes.iter().enumerate() {
                     if i > 0 {
                         output.push(' ');
                     }
-                    Self::generate_node(node, output, depth)?;
+                    Self::generate_node(node, output, depth + 1)?;
                 }
             }
             RtfNode::Bold(nodes) => {
@@ -145,11 +199,19 @@ impl RtfGenerator {
 
     /// Generate content for a table cell
     fn generate_cell(cell: &TableCell, output: &mut String) -> ConversionResult<()> {
+        // SECURITY: Limit cell content complexity
+        if cell.content.len() > 1000 {
+            return Err(ConversionError::GenerationError(
+                "Table cell too complex".to_string()
+            ));
+        }
+        
         for (i, node) in cell.content.iter().enumerate() {
             if i > 0 {
                 output.push(' ');
             }
-            Self::generate_node(node, output, 0)?;
+            // SECURITY: Start at depth 1 for table cells
+            Self::generate_node(node, output, 1)?;
         }
         Ok(())
     }
@@ -250,26 +312,42 @@ impl RtfGenerator {
 
     /// Generate minimal node (simplified formatting)
     fn generate_node_minimal(node: &RtfNode, output: &mut String) -> ConversionResult<()> {
+        Self::generate_node_minimal_with_depth(node, output, 0)
+    }
+    
+    fn generate_node_minimal_with_depth(node: &RtfNode, output: &mut String, depth: usize) -> ConversionResult<()> {
+        // SECURITY: Check recursion depth
+        if depth >= MAX_RECURSION_DEPTH {
+            return Err(ConversionError::GenerationError(
+                "Maximum recursion depth exceeded in minimal mode".to_string()
+            ));
+        }
+        
         match node {
             RtfNode::Text(text) => {
                 output.push_str(&Self::escape_rtf_text(text));
             }
             RtfNode::Paragraph(nodes) => {
+                if nodes.len() > 10000 {
+                    return Err(ConversionError::GenerationError(
+                        "Paragraph too complex for minimal mode".to_string()
+                    ));
+                }
                 for node in nodes {
-                    Self::generate_node_minimal(node, output)?;
+                    Self::generate_node_minimal_with_depth(node, output, depth + 1)?;
                 }
             }
             RtfNode::Bold(nodes) => {
                 output.push_str("{\\b ");
                 for node in nodes {
-                    Self::generate_node_minimal(node, output)?;
+                    Self::generate_node_minimal_with_depth(node, output, depth + 1)?;
                 }
                 output.push('}');
             }
             RtfNode::Italic(nodes) => {
                 output.push_str("{\\i ");
                 for node in nodes {
-                    Self::generate_node_minimal(node, output)?;
+                    Self::generate_node_minimal_with_depth(node, output, depth + 1)?;
                 }
                 output.push('}');
             }
@@ -277,14 +355,14 @@ impl RtfGenerator {
                 // Simple bold headings in minimal mode
                 output.push_str("{\\b ");
                 for node in content {
-                    Self::generate_node_minimal(node, output)?;
+                    Self::generate_node_minimal_with_depth(node, output, depth + 1)?;
                 }
                 output.push('}');
             }
             RtfNode::ListItem { content, .. } => {
                 output.push_str("- ");
                 for node in content {
-                    Self::generate_node_minimal(node, output)?;
+                    Self::generate_node_minimal_with_depth(node, output, depth + 1)?;
                 }
             }
             RtfNode::LineBreak => {

@@ -1,9 +1,23 @@
 // RTF Lexer - Tokenizes RTF input into a stream of tokens
 
 use super::types::{ConversionError, ConversionResult, RtfToken};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+// SECURITY: Constants for safe parsing
+const MAX_INPUT_SIZE: usize = 50 * 1024 * 1024; // 50MB max input
+const MAX_TOKEN_COUNT: usize = 1_000_000; // Prevent token explosion
+const MAX_CONTROL_WORD_LENGTH: usize = 32; // RTF spec limit
 
 /// Tokenize RTF content into a vector of tokens
 pub fn tokenize(input: &str) -> ConversionResult<Vec<RtfToken>> {
+    // SECURITY: Validate input size first
+    if input.len() > MAX_INPUT_SIZE {
+        return Err(ConversionError::ValidationError(
+            format!("Input size ({} bytes) exceeds maximum allowed ({} bytes)",
+                input.len(), MAX_INPUT_SIZE)
+        ));
+    }
+    
     let mut lexer = RtfLexer::new(input);
     lexer.tokenize()
 }
@@ -30,8 +44,18 @@ impl<'a> RtfLexer<'a> {
     /// Tokenize the entire input
     fn tokenize(&mut self) -> ConversionResult<Vec<RtfToken>> {
         let mut tokens = Vec::new();
+        
+        // SECURITY: Pre-allocate reasonable capacity
+        tokens.reserve(std::cmp::min(self.input.len() / 4, 10000));
 
         while let Some(ch) = self.current_char {
+            // SECURITY: Check token count to prevent memory exhaustion
+            if tokens.len() >= MAX_TOKEN_COUNT {
+                return Err(ConversionError::ValidationError(
+                    format!("Token count exceeds maximum allowed ({})", MAX_TOKEN_COUNT)
+                ));
+            }
+            
             match ch {
                 '{' => {
                     tokens.push(RtfToken::GroupStart);
@@ -78,10 +102,17 @@ impl<'a> RtfLexer<'a> {
     /// Read a control word
     fn read_control_word(&mut self) -> ConversionResult<RtfToken> {
         let mut name = String::new();
+        name.reserve(16); // Common control word size
 
         // Read alphabetic characters
         while let Some(ch) = self.current_char {
             if ch.is_alphabetic() {
+                // SECURITY: Limit control word length
+                if name.len() >= MAX_CONTROL_WORD_LENGTH {
+                    return Err(ConversionError::LexerError(
+                        format!("Control word too long (max {} characters)", MAX_CONTROL_WORD_LENGTH)
+                    ));
+                }
                 name.push(ch);
                 self.advance();
             } else {
@@ -111,73 +142,104 @@ impl<'a> RtfLexer<'a> {
     /// Read a numeric parameter
     fn read_number(&mut self) -> ConversionResult<Option<i32>> {
         let mut number = String::new();
+        number.reserve(11); // Max i32 is 10 digits + sign
 
         // Handle negative sign
-        if self.current_char == Some('-') {
+        let is_negative = if self.current_char == Some('-') {
             number.push('-');
             self.advance();
-        }
+            true
+        } else {
+            false
+        };
 
-        // Read digits with length limit to prevent overflow
-        const MAX_DIGITS: usize = 10; // Enough for i32 range
+        // SECURITY: Use checked arithmetic throughout
+        let mut value: i32 = 0;
+        let mut digit_count = 0;
+        
         while let Some(ch) = self.current_char {
-            if ch.is_numeric() {
-                if number.len() >= MAX_DIGITS + 1 { // +1 for possible negative sign
+            if let Some(digit) = ch.to_digit(10) {
+                digit_count += 1;
+                
+                // SECURITY: Prevent excessive digits
+                if digit_count > 10 {
                     return Err(ConversionError::LexerError(
-                        format!("Number too large: {}", number)
+                        "Number has too many digits".to_string()
                     ));
                 }
-                number.push(ch);
+                
+                // SECURITY: Use checked multiplication and addition
+                match value.checked_mul(10).and_then(|v| {
+                    if is_negative {
+                        v.checked_sub(digit as i32)
+                    } else {
+                        v.checked_add(digit as i32)
+                    }
+                }) {
+                    Some(new_value) => {
+                        // SECURITY: Additional range check
+                        if new_value < -1_000_000 || new_value > 1_000_000 {
+                            return Err(ConversionError::LexerError(
+                                format!("Number outside allowed range [-1000000, 1000000]")
+                            ));
+                        }
+                        value = new_value;
+                    }
+                    None => {
+                        return Err(ConversionError::LexerError(
+                            "Integer overflow in numeric parameter".to_string()
+                        ));
+                    }
+                }
+                
                 self.advance();
             } else {
                 break;
             }
         }
 
-        if number.is_empty() || number == "-" {
+        if digit_count == 0 {
             return Ok(None);
         }
 
-        // SECURITY: Parse with bounds checking
-        match number.parse::<i32>() {
-            Ok(n) => {
-                // Additional bounds check for security (-1M to +1M)
-                if n < -1_000_000 || n > 1_000_000 {
-                    return Err(ConversionError::LexerError(
-                        format!("Number {} outside allowed range [-1000000, 1000000]", n)
-                    ));
-                }
-                Ok(Some(n))
-            }
-            Err(_) => Err(ConversionError::LexerError(
-                format!("Invalid number: {}", number)
-            ))
-        }
+        Ok(Some(value))
     }
 
     /// Read a hexadecimal value
     fn read_hex_value(&mut self) -> ConversionResult<RtfToken> {
         self.advance(); // Skip the apostrophe
 
-        let mut hex = String::new();
+        // SECURITY: Read hex digits with checked arithmetic
+        let mut value: u8 = 0;
         
         // Read exactly 2 hex digits
-        for _ in 0..2 {
+        for i in 0..2 {
             match self.current_char {
                 Some(ch) if ch.is_ascii_hexdigit() => {
-                    hex.push(ch);
+                    let digit_value = ch.to_digit(16)
+                        .ok_or_else(|| ConversionError::LexerError(
+                            format!("Invalid hex digit: {}", ch)
+                        ))? as u8;
+                    
+                    // SECURITY: Use checked arithmetic
+                    match value.checked_mul(16).and_then(|v| v.checked_add(digit_value)) {
+                        Some(new_value) => value = new_value,
+                        None => {
+                            return Err(ConversionError::LexerError(
+                                "Hex value overflow".to_string()
+                            ));
+                        }
+                    }
+                    
                     self.advance();
                 }
                 _ => {
                     return Err(ConversionError::LexerError(
-                        "Expected hex digit after \\'".to_string(),
+                        format!("Expected hex digit after \\', got {:?}", self.current_char)
                     ));
                 }
             }
         }
-
-        let value = u8::from_str_radix(&hex, 16)
-            .map_err(|_| ConversionError::LexerError(format!("Invalid hex value: {}", hex)))?;
 
         Ok(RtfToken::HexValue(value))
     }
@@ -216,8 +278,17 @@ impl<'a> RtfLexer<'a> {
 
     /// Advance to the next character
     fn advance(&mut self) {
-        self.position += 1;
-        self.current_char = self.input.chars().nth(self.position);
+        // SECURITY: Use checked addition to prevent overflow
+        match self.position.checked_add(1) {
+            Some(new_pos) if new_pos <= self.input.len() => {
+                self.position = new_pos;
+                self.current_char = self.input.chars().nth(self.position);
+            }
+            _ => {
+                self.position = self.input.len();
+                self.current_char = None;
+            }
+        }
     }
 }
 
@@ -227,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_simple_text() {
-        let tokens = tokenize("Hello World").unwrap();
+        let tokens = tokenize("Hello World").expect("tokenization should succeed");
         assert_eq!(tokens.len(), 1);
         match &tokens[0] {
             RtfToken::Text(text) => assert_eq!(text, "Hello World"),
@@ -237,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_groups() {
-        let tokens = tokenize("{Hello}").unwrap();
+        let tokens = tokenize("{Hello}").expect("tokenization should succeed");
         assert_eq!(tokens.len(), 3);
         assert!(matches!(tokens[0], RtfToken::GroupStart));
         assert!(matches!(tokens[1], RtfToken::Text(_)));
@@ -246,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_control_word() {
-        let tokens = tokenize(r"\rtf1").unwrap();
+        let tokens = tokenize(r"\rtf1").expect("tokenization should succeed");
         assert_eq!(tokens.len(), 1);
         match &tokens[0] {
             RtfToken::ControlWord { name, parameter } => {
@@ -259,7 +330,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_control_symbol() {
-        let tokens = tokenize(r"\*").unwrap();
+        let tokens = tokenize(r"\*").expect("tokenization should succeed");
         assert_eq!(tokens.len(), 1);
         match &tokens[0] {
             RtfToken::ControlSymbol(ch) => assert_eq!(*ch, '*'),
@@ -269,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_hex_value() {
-        let tokens = tokenize(r"\'4a").unwrap();
+        let tokens = tokenize(r"\'4a").expect("tokenization should succeed");
         assert_eq!(tokens.len(), 1);
         match &tokens[0] {
             RtfToken::HexValue(value) => assert_eq!(*value, 0x4a),
