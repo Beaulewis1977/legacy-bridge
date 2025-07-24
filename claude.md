@@ -3,7 +3,7 @@
 ## 🎉 **PROJECT STATUS: SUCCESSFULLY DEPLOYED** 
 ### **Date**: 2025-07-24 | **Progress**: 31/41 tasks (76% complete) | **Status**: GitHub deployed ✅
 
-### documents that MUST be read: legacy-bridge-description.md, claude.md, LEGACYBRIDGE_BUILD_SPEC_2.md, NEW_AGENT_BUILD_PROMPT_2.md
+### documents that MUST be read: legacy-bridge-description.md, claude.md, LEGACYBRIDGE_BUILD_SPEC_2.md, NEW_AGENT_BUILD_PROMPT_2.md, orchestrator-agent-prompt.md
 
 ### you must use multiple specialized agents in parallel. create specialized agent and give them instructions to complete tasks. youre the orchestrator and lead agent. you will lead and direct the other agents. you must use multiple tools together with best practices including sequential thinking, deep code reasoning, perplexity, context7, playwright, vibe-coder, zen, etc
 
