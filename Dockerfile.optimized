@@ -1,0 +1,156 @@
+# Multi-stage Dockerfile for LegacyBridge - Production Optimized
+# Supports multi-platform builds with security scanning and minimal image size
+
+# Build arguments for versioning
+ARG VERSION=unknown
+ARG BUILD_DATE=unknown
+ARG COMMIT_SHA=unknown
+
+# Stage 1: Base dependencies layer (cached across builds)
+FROM node:20-alpine AS base-deps
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
+
+# Stage 2: Rust builder for DLL
+FROM rust:1.75-alpine AS rust-builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    openssl-dev \
+    pkgconfig \
+    && rm -rf /var/cache/apk/*
+
+WORKDIR /build
+
+# Copy Rust project files (leverage Docker cache)
+COPY legacybridge/dll-build/Cargo.toml legacybridge/dll-build/Cargo.lock ./
+# Create dummy src to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/lib.rs && \
+    cargo build --release --features dll-export && \
+    rm -rf src
+
+# Copy actual source and rebuild (only changed files)
+COPY legacybridge/dll-build/src ./src
+RUN touch src/lib.rs && \
+    cargo build --release --features dll-export && \
+    strip target/release/liblegacybridge.so
+
+# Stage 3: Node.js dependency installer
+FROM base-deps AS node-deps
+
+WORKDIR /deps
+
+# Copy package files only
+COPY legacybridge/package*.json ./
+
+# Install production dependencies only (cached if unchanged)
+RUN npm ci --only=production --no-audit --no-fund && \
+    npm cache clean --force
+
+# Stage 4: Node.js builder
+FROM base-deps AS node-builder
+
+WORKDIR /build
+
+# Copy dependencies from previous stage
+COPY --from=node-deps /deps/node_modules ./node_modules
+
+# Copy source files
+COPY legacybridge/package*.json ./
+COPY legacybridge/public ./public
+COPY legacybridge/src ./src
+COPY legacybridge/next.config.js ./
+COPY legacybridge/tsconfig.json ./
+COPY legacybridge/tailwind.config.js ./
+COPY legacybridge/postcss.config.js ./
+
+# Set build environment variables
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Build Next.js application with optimizations
+RUN npm run build && \
+    # Remove source maps in production
+    find .next -name "*.map" -delete && \
+    # Remove development files
+    rm -rf src public
+
+# Stage 5: Security scanner
+FROM aquasec/trivy:latest AS security-scanner
+WORKDIR /scan
+COPY --from=node-builder /build/package*.json ./
+RUN trivy fs --no-progress --security-checks vuln .
+
+# Stage 6: Final production image
+FROM node:20-alpine AS production
+
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    libc6-compat \
+    openssl \
+    curl \
+    && rm -rf /var/cache/apk/* \
+    # Create non-root user
+    && addgroup -g 1001 -S nodejs \
+    && adduser -S nextjs -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy built artifacts with proper ownership
+COPY --from=rust-builder --chown=nextjs:nodejs /build/target/release/liblegacybridge.so ./lib/
+COPY --from=node-builder --chown=nextjs:nodejs /build/.next/standalone ./
+COPY --from=node-builder --chown=nextjs:nodejs /build/.next/static ./.next/static
+COPY --from=node-builder --chown=nextjs:nodejs /build/public ./public
+
+# Copy header files
+COPY --chown=nextjs:nodejs legacybridge/include/legacybridge.h ./include/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R nextjs:nodejs /app/logs /app/tmp
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Switch to non-root user
+USER nextjs
+
+# Expose ports
+EXPOSE 3000 9090
+
+# Health check with proper timeout
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Add metadata labels
+LABEL org.opencontainers.image.title="LegacyBridge" \
+      org.opencontainers.image.description="Enterprise RTF-Markdown Converter" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${COMMIT_SHA}" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="LegacyBridge Team" \
+      org.opencontainers.image.source="https://github.com/legacybridge/legacybridge"
+
+# Use node directly for better performance
+CMD ["node", "server.js"]
+
+# Stage 7: Debug image (optional, for troubleshooting)
+FROM production AS debug
+USER root
+RUN apk add --no-cache \
+    bash \
+    vim \
+    netcat-openbsd \
+    procps \
+    htop
+USER nextjs

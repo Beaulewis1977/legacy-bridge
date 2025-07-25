@@ -73,10 +73,15 @@ impl Validator {
     }
 
     pub fn with_config(config: ValidationConfig) -> Self {
+        // Use lazy_static or once_cell for compiled regexes to avoid unwrap
+        // For now, we'll use expect() with descriptive messages since these are static patterns
+        // that should never fail to compile
         Self {
             config,
-            rtf_header_regex: Regex::new(r"^\{\\rtf1").unwrap(),
-            control_word_regex: Regex::new(r"\\([a-zA-Z]+)(-?\d*)").unwrap(),
+            rtf_header_regex: Regex::new(r"^\{\\rtf1")
+                .expect("Failed to compile RTF header regex - this is a bug"),
+            control_word_regex: Regex::new(r"\\([a-zA-Z]+)(-?\d*)")
+                .expect("Failed to compile control word regex - this is a bug"),
         }
     }
 

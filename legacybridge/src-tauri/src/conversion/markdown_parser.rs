@@ -160,7 +160,8 @@ impl MarkdownToRtfConverter {
                         });
                     } else if !self.list_stack.is_empty() {
                         // This is a list item
-                        let list_state = self.list_stack.last().unwrap();
+                        let list_state = self.list_stack.last()
+                            .expect("List stack should not be empty after check");
                         self.document.content.push(RtfNode::ListItem {
                             level: list_state.level,
                             content: paragraph_content,
@@ -304,7 +305,8 @@ impl MarkdownToRtfConverter {
                     content: paragraph_content,
                 });
             } else if !self.list_stack.is_empty() {
-                let list_state = self.list_stack.last().unwrap();
+                let list_state = self.list_stack.last()
+                    .expect("List stack should not be empty after check");
                 self.document.content.push(RtfNode::ListItem {
                     level: list_state.level,
                     content: paragraph_content,

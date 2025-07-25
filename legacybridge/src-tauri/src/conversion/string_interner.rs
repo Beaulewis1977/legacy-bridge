@@ -47,7 +47,8 @@ impl OptimizedStringInterner {
     
     /// Create a new string interner with specified capacity
     pub fn with_capacity(capacity: usize) -> Self {
-        let cache_size = NonZeroUsize::new(capacity).unwrap_or(NonZeroUsize::new(1).unwrap());
+        let cache_size = NonZeroUsize::new(capacity)
+            .unwrap_or_else(|| NonZeroUsize::new(1).expect("1 is always non-zero"));
         
         Self {
             cache: RwLock::new(LruCache::new(cache_size)),

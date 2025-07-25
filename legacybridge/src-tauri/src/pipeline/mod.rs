@@ -13,6 +13,8 @@ pub mod validation_layer;
 pub mod error_recovery;
 pub mod template_system;
 pub mod concurrent_processor;
+pub mod adaptive_thread_pool;
+pub mod concurrent_processor_v2;
 
 #[cfg(test)]
 mod test_pipeline;
@@ -261,7 +263,8 @@ impl DocumentPipeline {
 
     /// Parse with formatting preservation
     fn parse_with_formatting(&self, context: &PipelineContext) -> ConversionResult<RtfDocument> {
-        let tokens = context.tokens.as_ref().unwrap();
+        let tokens = context.tokens.as_ref()
+            .ok_or_else(|| ConversionError::ParseError("Missing tokens in context".to_string()))?;
         
         // SECURITY: Use SecureRtfParser by default for all parsing
         if self.config.preserve_formatting {
@@ -293,7 +296,8 @@ impl DocumentPipeline {
         error: ConversionError,
     ) -> ConversionResult<RtfDocument> {
         let recovery = error_recovery::ErrorRecovery::new();
-        let tokens = context.tokens.as_ref().unwrap();
+        let tokens = context.tokens.as_ref()
+            .ok_or_else(|| ConversionError::ParseError("Missing tokens for error recovery".to_string()))?;
         let (document, actions) = recovery.recover_parsing(tokens, error)?;
         
         context.recovery_actions.extend(actions);
@@ -307,7 +311,8 @@ impl DocumentPipeline {
         template_name: &str,
     ) -> ConversionResult<()> {
         let template_system = template_system::TemplateSystem::new();
-        let document = context.document.as_mut().unwrap();
+        let document = context.document.as_mut()
+            .ok_or_else(|| ConversionError::ParseError("Missing document for template application".to_string()))?;
         
         template_system.apply_template(document, template_name)?;
         Ok(())
@@ -316,7 +321,8 @@ impl DocumentPipeline {
     /// Post-validation stage
     fn post_validate(&self, context: &mut PipelineContext) -> ConversionResult<()> {
         let validator = validation_layer::Validator::new();
-        let document = context.document.as_ref().unwrap();
+        let document = context.document.as_ref()
+            .ok_or_else(|| ConversionError::ValidationError("Missing document for validation".to_string()))?;
         let results = validator.post_validate(document);
         
         for result in &results {
@@ -331,7 +337,8 @@ impl DocumentPipeline {
 
     /// Generate markdown with formatting preservation
     fn generate_markdown(&self, context: &PipelineContext) -> ConversionResult<String> {
-        let document = context.document.as_ref().unwrap();
+        let document = context.document.as_ref()
+            .ok_or_else(|| ConversionError::ParseError("Missing document for markdown generation".to_string()))?;
         
         if self.config.preserve_formatting {
             let formatter = formatting_engine::FormattingEngine::new();
@@ -389,7 +396,8 @@ impl DocumentPipeline {
         template_name: &str,
     ) -> ConversionResult<()> {
         let template_system = template_system::TemplateSystem::new();
-        let document = context.document.as_mut().unwrap();
+        let document = context.document.as_mut()
+            .ok_or_else(|| ConversionError::ParseError("Missing document for template application".to_string()))?;
         
         template_system.apply_template(document, template_name)?;
         Ok(())
@@ -398,7 +406,8 @@ impl DocumentPipeline {
     /// Post-validation stage for markdown
     fn post_validate_markdown(&self, context: &mut MarkdownPipelineContext) -> ConversionResult<()> {
         let validator = validation_layer::Validator::new();
-        let document = context.document.as_ref().unwrap();
+        let document = context.document.as_ref()
+            .ok_or_else(|| ConversionError::ValidationError("Missing document for markdown validation".to_string()))?;
         let results = validator.post_validate(document);
         
         for result in &results {
@@ -413,7 +422,8 @@ impl DocumentPipeline {
 
     /// Generate RTF with formatting preservation
     fn generate_rtf(&self, context: &MarkdownPipelineContext) -> ConversionResult<String> {
-        let document = context.document.as_ref().unwrap();
+        let document = context.document.as_ref()
+            .ok_or_else(|| ConversionError::ParseError("Missing document for RTF generation".to_string()))?;
         
         if let Some(template_name) = &self.config.template {
             RtfGenerator::generate_with_template(document, Some(template_name))
@@ -438,7 +448,9 @@ pub fn convert_rtf_to_markdown_with_pipeline(
     };
     
     let context = pipeline.process(rtf_content)?;
-    let markdown = context.markdown.as_ref().unwrap().clone();
+    let markdown = context.markdown.as_ref()
+        .ok_or_else(|| ConversionError::ParseError("Pipeline failed to generate markdown".to_string()))?
+        .clone();
     
     Ok((markdown, context))
 }
@@ -454,7 +466,9 @@ pub fn convert_markdown_to_rtf_with_pipeline(
     };
     
     let context = pipeline.process_markdown(markdown_content)?;
-    let rtf = context.rtf.as_ref().unwrap().clone();
+    let rtf = context.rtf.as_ref()
+        .ok_or_else(|| ConversionError::ParseError("Pipeline failed to generate RTF".to_string()))?
+        .clone();
     
     Ok((rtf, context))
 }
