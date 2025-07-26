@@ -129,7 +129,7 @@
       }
     ],
     "systemTray": {
-      "iconPath": null,
+      "iconPath": "icons/icon.png",
       "iconAsTemplate": false
     },
     "updater": {
@@ -137,4 +137,3 @@
     }
   }
 }
-EOF < /dev/null
