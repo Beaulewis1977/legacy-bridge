@@ -1,0 +1,27 @@
+apiVersion: v2
+name: legacybridge
+description: LegacyBridge Enterprise RTF-Markdown Converter
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - rtf
+  - markdown
+  - converter
+  - legacy
+  - enterprise
+home: https://github.com/yourusername/legacybridge
+sources:
+  - https://github.com/yourusername/legacybridge
+maintainers:
+  - name: LegacyBridge Team
+    email: team@legacybridge.com
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

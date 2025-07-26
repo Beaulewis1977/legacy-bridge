@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegacyBridge Interactive API Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .endpoint-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .endpoint-section h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .method-badge {
+            background: #27ae60;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .try-it-section {
+            margin: 2rem 0;
+        }
+        
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            resize: vertical;
+        }
+        
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        button.secondary {
+            background: #95a5a6;
+        }
+        
+        button.secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .result-output {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result-output.error {
+            background: #fee;
+            border-color: #fcc;
+            color: #c00;
+        }
+        
+        .result-output.success {
+            background: #efe;
+            border-color: #cfc;
+        }
+        
+        .tab-container {
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            color: #333;
+            background: #f8f9fa;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        
+        .code-example {
+            display: none;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+        }
+        
+        .code-example.active {
+            display: block;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: #666;
+            margin-top: 1rem;
+        }
+        
+        .loading.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .format-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        
+        .format-options label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: normal;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>🔌 LegacyBridge Interactive API Explorer</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- RTF to Markdown Conversion -->
+        <div class="endpoint-section">
+            <h2>
+                <span class="method-badge">POST</span>
+                RTF to Markdown Conversion
+            </h2>
+            <p>Convert Rich Text Format (RTF) documents to Markdown format with high fidelity.</p>
+            
+            <div class="try-it-section">
+                <h3>Try it out</h3>
+                
+                <div class="input-group">
+                    <label for="rtf-input">RTF Content</label>
+                    <textarea id="rtf-input" rows="8" placeholder="Enter or paste RTF content here...">{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}
+\\f0\\fs24 This is \\b bold\\b0 and \\i italic\\i0 text.
+\\par
+{\\*\\listtable{\\list\\listtemplateid1\\listhybrid{\\listlevel\\levelnfc23\\levelnfcn23\\leveljc0\\leveljcn0\\levelfollow0\\levelstartat1\\levelspace360\\levelindent0{\\*\\levelmarker \\{disc\\}}{\\leveltext\\leveltemplateid1\\'01\\uc0\\u8226 ;}{\\levelnumbers;}\\fi-360\\li720\\lin720 }
+\\listid1}}
+{\\*\\listoverridetable{\\listoverride\\listid1\\listoverridecount0\\ls1}}
+\\ls1\\ilvl0\\fi-360\\li720 First item\\par
+\\ls1\\ilvl0\\fi-360\\li720 Second item\\par
+}</textarea>
+                </div>
+                
+                <div class="format-options">
+                    <label>
+                        <input type="checkbox" id="preserve-formatting" checked>
+                        Preserve formatting
+                    </label>
+                    <label>
+                        <input type="checkbox" id="normalize-output">
+                        Normalize output
+                    </label>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="convertRtfToMarkdown()">Convert to Markdown</button>
+                    <button class="secondary" onclick="loadRtfSample()">Load Sample</button>
+                    <button class="secondary" onclick="clearRtfInput()">Clear</button>
+                </div>
+                
+                <div class="loading" id="rtf-loading">
+                    <div class="spinner"></div>
+                    <span>Converting...</span>
+                </div>
+                
+                <div id="rtf-result" class="result-output" style="display: none;"></div>
+                
+                <div class="stats" id="rtf-stats" style="display: none;">
+                    <div class="stat">
+                        <div class="stat-value" id="rtf-time">0ms</div>
+                        <div class="stat-label">Processing Time</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="rtf-size">0KB</div>
+                        <div class="stat-label">Input Size</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="rtf-output-size">0KB</div>
+                        <div class="stat-label">Output Size</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-examples">
+                <h3>Code Examples</h3>
+                <div class="tab-container">
+                    <button class="tab active" onclick="showExample('rtf', 'curl')">cURL</button>
+                    <button class="tab" onclick="showExample('rtf', 'javascript')">JavaScript</button>
+                    <button class="tab" onclick="showExample('rtf', 'python')">Python</button>
+                    <button class="tab" onclick="showExample('rtf', 'vb6')">VB6</button>
+                    <button class="tab" onclick="showExample('rtf', 'csharp')">C#</button>
+                </div>
+                
+                <pre id="rtf-curl" class="code-example active">curl -X POST http://localhost:8080/api/convert \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "content": "{\\\\rtf1\\\\ansi\\\\b Hello World\\\\b0}",
+    "from": "rtf",
+    "to": "markdown"
+  }'</pre>
+                
+                <pre id="rtf-javascript" class="code-example">const response = await fetch('http://localhost:8080/api/convert', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    content: '{\\\\rtf1\\\\ansi\\\\b Hello World\\\\b0}',
+    from: 'rtf',
+    to: 'markdown'
+  })
+});
+
+const result = await response.json();
+console.log(result.output);</pre>
+                
+                <pre id="rtf-python" class="code-example">import requests
+
+response = requests.post('http://localhost:8080/api/convert', json={
+    'content': '{\\\\rtf1\\\\ansi\\\\b Hello World\\\\b0}',
+    'from': 'rtf',
+    'to': 'markdown'
+})
+
+result = response.json()
+print(result['output'])</pre>
+                
+                <pre id="rtf-vb6" class="code-example">' Using the LegacyBridge VB6 wrapper
+Dim markdown As String
+Dim rtfContent As String
+
+rtfContent = RichTextBox1.TextRTF
+markdown = ConvertRTFToMarkdown(rtfContent)
+
+If markdown <> "" Then
+    Text1.Text = markdown
+Else
+    MsgBox "Conversion failed: " & GetLastError()
+End If</pre>
+                
+                <pre id="rtf-csharp" class="code-example">using LegacyBridge;
+
+var converter = new LegacyBridgeConverter();
+string rtfContent = @"{\\rtf1\\ansi\\b Hello World\\b0}";
+
+try 
+{
+    string markdown = converter.ConvertRtfToMarkdown(rtfContent);
+    Console.WriteLine(markdown);
+}
+catch (ConversionException ex)
+{
+    Console.WriteLine($"Conversion failed: {ex.Message}");
+}</pre>
+            </div>
+        </div>
+
+        <!-- Markdown to RTF Conversion -->
+        <div class="endpoint-section">
+            <h2>
+                <span class="method-badge">POST</span>
+                Markdown to RTF Conversion
+            </h2>
+            <p>Convert Markdown documents to Rich Text Format (RTF) with professional formatting.</p>
+            
+            <div class="try-it-section">
+                <h3>Try it out</h3>
+                
+                <div class="input-group">
+                    <label for="markdown-input">Markdown Content</label>
+                    <textarea id="markdown-input" rows="8" placeholder="Enter Markdown content here..."># Welcome to LegacyBridge
+
+This is a **bold** statement and this is *italic* text.
+
+## Features
+
+- Fast conversion speed
+- High fidelity output
+- Enterprise ready
+
+### Code Example
+
+```javascript
+const result = convertMarkdownToRTF(input);
+console.log(result);
+```
+
+> This is a blockquote with some important information.
+
+Visit [our website](https://example.com) for more information.</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="template-select">RTF Template</label>
+                    <select id="template-select">
+                        <option value="default">Default</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="professional">Professional</option>
+                        <option value="academic">Academic</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="convertMarkdownToRtf()">Convert to RTF</button>
+                    <button class="secondary" onclick="loadMarkdownSample()">Load Sample</button>
+                    <button class="secondary" onclick="clearMarkdownInput()">Clear</button>
+                </div>
+                
+                <div class="loading" id="markdown-loading">
+                    <div class="spinner"></div>
+                    <span>Converting...</span>
+                </div>
+                
+                <div id="markdown-result" class="result-output" style="display: none;"></div>
+                
+                <div class="stats" id="markdown-stats" style="display: none;">
+                    <div class="stat">
+                        <div class="stat-value" id="markdown-time">0ms</div>
+                        <div class="stat-label">Processing Time</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="markdown-size">0KB</div>
+                        <div class="stat-label">Input Size</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="markdown-output-size">0KB</div>
+                        <div class="stat-label">Output Size</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-examples">
+                <h3>Code Examples</h3>
+                <div class="tab-container">
+                    <button class="tab active" onclick="showExample('markdown', 'curl')">cURL</button>
+                    <button class="tab" onclick="showExample('markdown', 'javascript')">JavaScript</button>
+                    <button class="tab" onclick="showExample('markdown', 'python')">Python</button>
+                    <button class="tab" onclick="showExample('markdown', 'vb6')">VB6</button>
+                    <button class="tab" onclick="showExample('markdown', 'vfp9')">VFP9</button>
+                </div>
+                
+                <pre id="markdown-curl" class="code-example active">curl -X POST http://localhost:8080/api/convert \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "content": "# Hello World\\n\\nThis is **bold** text.",
+    "from": "markdown",
+    "to": "rtf",
+    "template": "professional"
+  }'</pre>
+                
+                <pre id="markdown-javascript" class="code-example">const response = await fetch('http://localhost:8080/api/convert', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    content: '# Hello World\\n\\nThis is **bold** text.',
+    from: 'markdown',
+    to: 'rtf',
+    template: 'professional'
+  })
+});
+
+const result = await response.json();
+console.log(result.output);</pre>
+                
+                <pre id="markdown-python" class="code-example">import requests
+
+response = requests.post('http://localhost:8080/api/convert', json={
+    'content': '# Hello World\\n\\nThis is **bold** text.',
+    'from': 'markdown',
+    'to': 'rtf',
+    'template': 'professional'
+})
+
+result = response.json()
+print(result['output'])</pre>
+                
+                <pre id="markdown-vb6" class="code-example">' Using the LegacyBridge VB6 wrapper
+Dim rtfContent As String
+Dim markdownContent As String
+
+markdownContent = "# Hello World" & vbCrLf & vbCrLf & "This is **bold** text."
+rtfContent = ConvertMarkdownToRTF(markdownContent)
+
+If rtfContent <> "" Then
+    RichTextBox1.TextRTF = rtfContent
+Else
+    MsgBox "Conversion failed: " & GetLastError()
+End If</pre>
+                
+                <pre id="markdown-vfp9" class="code-example">* Using the LegacyBridge VFP9 wrapper
+LOCAL loBridge, lcMarkdown, lcRTF
+loBridge = CREATEOBJECT("LegacyBridge")
+
+lcMarkdown = "# Hello World" + CHR(13) + CHR(10) + ;
+             CHR(13) + CHR(10) + ;
+             "This is **bold** text."
+
+lcRTF = loBridge.ConvertMarkdownToRTF(lcMarkdown)
+
+IF !EMPTY(lcRTF)
+    * Use the RTF content
+    ThisForm.RichText1.TextRTF = lcRTF
+ELSE
+    MESSAGEBOX("Conversion failed: " + loBridge.GetLastError())
+ENDIF</pre>
+            </div>
+        </div>
+
+        <!-- Batch Processing -->
+        <div class="endpoint-section">
+            <h2>
+                <span class="method-badge">POST</span>
+                Batch File Conversion
+            </h2>
+            <p>Convert multiple files in a single operation for maximum efficiency.</p>
+            
+            <div class="try-it-section">
+                <h3>Try it out</h3>
+                
+                <div class="input-group">
+                    <label for="batch-input">File List (one per line)</label>
+                    <textarea id="batch-input" rows="6" placeholder="Enter file paths, one per line...">document1.rtf
+document2.rtf
+report.rtf
+notes.rtf</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="batch-format">Conversion Direction</label>
+                    <select id="batch-format">
+                        <option value="rtf-to-md">RTF → Markdown</option>
+                        <option value="md-to-rtf">Markdown → RTF</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="processBatch()">Process Batch</button>
+                    <button class="secondary" onclick="cancelBatch()">Cancel</button>
+                </div>
+                
+                <div class="loading" id="batch-loading">
+                    <div class="spinner"></div>
+                    <span>Processing batch... <span id="batch-progress">0/0</span></span>
+                </div>
+                
+                <div id="batch-result" class="result-output" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Document Validation -->
+        <div class="endpoint-section">
+            <h2>
+                <span class="method-badge">POST</span>
+                Document Validation
+            </h2>
+            <p>Validate RTF or Markdown documents for syntax errors and structural issues.</p>
+            
+            <div class="try-it-section">
+                <h3>Try it out</h3>
+                
+                <div class="input-group">
+                    <label for="validate-input">Document Content</label>
+                    <textarea id="validate-input" rows="6" placeholder="Paste document content to validate...">{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}
+\\f0\\fs24 This document has an \\b unclosed bold tag.
+}</textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="validate-format">Document Format</label>
+                    <select id="validate-format">
+                        <option value="rtf">RTF</option>
+                        <option value="markdown">Markdown</option>
+                    </select>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="validateDocument()">Validate Document</button>
+                    <button class="secondary" onclick="clearValidateInput()">Clear</button>
+                </div>
+                
+                <div id="validate-result" class="result-output" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated API endpoint (replace with actual endpoint)
+        const API_ENDPOINT = 'http://localhost:8080/api';
+
+        // RTF to Markdown conversion
+        async function convertRtfToMarkdown() {
+            const input = document.getElementById('rtf-input').value;
+            const preserveFormatting = document.getElementById('preserve-formatting').checked;
+            const normalize = document.getElementById('normalize-output').checked;
+            
+            if (!input.trim()) {
+                showResult('rtf-result', 'Please enter RTF content to convert.', 'error');
+                return;
+            }
+            
+            showLoading('rtf-loading', true);
+            hideResult('rtf-result');
+            hideStats('rtf-stats');
+            
+            const startTime = performance.now();
+            
+            try {
+                // Simulate API call (replace with actual API call)
+                await simulateDelay(500);
+                
+                // Mock conversion result
+                const markdown = mockRtfToMarkdown(input);
+                const endTime = performance.now();
+                
+                showResult('rtf-result', markdown, 'success');
+                showStats('rtf-stats', {
+                    time: Math.round(endTime - startTime),
+                    inputSize: new Blob([input]).size,
+                    outputSize: new Blob([markdown]).size
+                });
+            } catch (error) {
+                showResult('rtf-result', `Error: ${error.message}`, 'error');
+            } finally {
+                showLoading('rtf-loading', false);
+            }
+        }
+
+        // Markdown to RTF conversion
+        async function convertMarkdownToRtf() {
+            const input = document.getElementById('markdown-input').value;
+            const template = document.getElementById('template-select').value;
+            
+            if (!input.trim()) {
+                showResult('markdown-result', 'Please enter Markdown content to convert.', 'error');
+                return;
+            }
+            
+            showLoading('markdown-loading', true);
+            hideResult('markdown-result');
+            hideStats('markdown-stats');
+            
+            const startTime = performance.now();
+            
+            try {
+                // Simulate API call
+                await simulateDelay(500);
+                
+                // Mock conversion result
+                const rtf = mockMarkdownToRtf(input, template);
+                const endTime = performance.now();
+                
+                showResult('markdown-result', rtf, 'success');
+                showStats('markdown-stats', {
+                    time: Math.round(endTime - startTime),
+                    inputSize: new Blob([input]).size,
+                    outputSize: new Blob([rtf]).size
+                });
+            } catch (error) {
+                showResult('markdown-result', `Error: ${error.message}`, 'error');
+            } finally {
+                showLoading('markdown-loading', false);
+            }
+        }
+
+        // Batch processing
+        async function processBatch() {
+            const input = document.getElementById('batch-input').value;
+            const format = document.getElementById('batch-format').value;
+            const files = input.trim().split('\\n').filter(f => f.trim());
+            
+            if (files.length === 0) {
+                showResult('batch-result', 'Please enter file paths to process.', 'error');
+                return;
+            }
+            
+            showLoading('batch-loading', true);
+            hideResult('batch-result');
+            
+            let processed = 0;
+            const results = [];
+            
+            for (const file of files) {
+                document.getElementById('batch-progress').textContent = `${processed}/${files.length}`;
+                
+                try {
+                    await simulateDelay(200);
+                    results.push(`✓ ${file} - Converted successfully`);
+                    processed++;
+                } catch (error) {
+                    results.push(`✗ ${file} - ${error.message}`);
+                }
+            }
+            
+            document.getElementById('batch-progress').textContent = `${processed}/${files.length}`;
+            showResult('batch-result', results.join('\\n'), processed === files.length ? 'success' : 'error');
+            showLoading('batch-loading', false);
+        }
+
+        // Document validation
+        async function validateDocument() {
+            const input = document.getElementById('validate-input').value;
+            const format = document.getElementById('validate-format').value;
+            
+            if (!input.trim()) {
+                showResult('validate-result', 'Please enter document content to validate.', 'error');
+                return;
+            }
+            
+            try {
+                await simulateDelay(300);
+                
+                const validation = mockValidateDocument(input, format);
+                const resultText = formatValidationResult(validation);
+                
+                showResult('validate-result', resultText, validation.valid ? 'success' : 'error');
+            } catch (error) {
+                showResult('validate-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Helper functions
+        function showExample(section, lang) {
+            const tabs = document.querySelectorAll(`#${section}-${lang}`).item(0).parentElement.querySelectorAll('.tab');
+            const examples = document.querySelectorAll(`#${section}-${lang}`).item(0).parentElement.parentElement.querySelectorAll('.code-example');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            examples.forEach(example => example.classList.remove('active'));
+            
+            document.querySelector(`#${section}-${lang}`).parentElement.querySelector(`.tab:nth-child(${Array.from(tabs).findIndex(t => t.textContent.toLowerCase().includes(lang.replace('csharp', 'c#'))) + 1})`).classList.add('active');
+            document.getElementById(`${section}-${lang}`).classList.add('active');
+        }
+
+        function showResult(elementId, content, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = content;
+            element.className = 'result-output ' + type;
+            element.style.display = 'block';
+        }
+
+        function hideResult(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showLoading(elementId, show) {
+            document.getElementById(elementId).classList.toggle('active', show);
+        }
+
+        function showStats(elementId, stats) {
+            document.getElementById(elementId).style.display = 'flex';
+            document.getElementById(elementId.replace('-stats', '-time')).textContent = stats.time + 'ms';
+            document.getElementById(elementId.replace('-stats', '-size')).textContent = formatBytes(stats.inputSize);
+            document.getElementById(elementId.replace('-stats', '-output-size')).textContent = formatBytes(stats.outputSize);
+        }
+
+        function hideStats(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + 'B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+        }
+
+        function simulateDelay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Mock conversion functions (replace with actual API calls)
+        function mockRtfToMarkdown(rtf) {
+            // Simple mock conversion
+            let markdown = rtf
+                .replace(/{\\\\rtf1.*?\\\\ansi.*?}/g, '')
+                .replace(/\\\\b ([^\\\\]+)\\\\b0/g, '**$1**')
+                .replace(/\\\\i ([^\\\\]+)\\\\i0/g, '*$1*')
+                .replace(/\\\\par/g, '\\n\\n')
+                .replace(/{\\\\.*?}/g, '')
+                .replace(/\\\\./g, '')
+                .trim();
+            
+            return markdown || '# Converted Document\\n\\nThis is the converted markdown content.';
+        }
+
+        function mockMarkdownToRtf(markdown, template) {
+            // Simple mock conversion
+            const fonts = {
+                default: 'Times New Roman',
+                minimal: 'Arial',
+                professional: 'Calibri',
+                academic: 'Times New Roman'
+            };
+            
+            let rtf = `{\\\\rtf1\\\\ansi\\\\deff0 {\\\\fonttbl {\\\\f0 ${fonts[template] || fonts.default};}}\\n`;
+            rtf += '\\\\f0\\\\fs24 ';
+            
+            rtf += markdown
+                .replace(/^# (.+)$/gm, '\\\\fs32\\\\b $1\\\\b0\\\\fs24\\\\par')
+                .replace(/^## (.+)$/gm, '\\\\fs28\\\\b $1\\\\b0\\\\fs24\\\\par')
+                .replace(/\\*\\*(.+?)\\*\\*/g, '\\\\b $1\\\\b0')
+                .replace(/\\*(.+?)\\*/g, '\\\\i $1\\\\i0')
+                .replace(/\\n\\n/g, '\\\\par\\n')
+                .replace(/\\n/g, ' ');
+            
+            rtf += '\\n}';
+            
+            return rtf;
+        }
+
+        function mockValidateDocument(content, format) {
+            const errors = [];
+            const warnings = [];
+            
+            if (format === 'rtf') {
+                if (!content.includes('{\\\\rtf')) errors.push('Missing RTF header');
+                if (!content.endsWith('}')) errors.push('Missing closing brace');
+                if (content.match(/\\\\b[^\\\\]*$/)) warnings.push('Unclosed bold formatting');
+                if (content.match(/\\\\i[^\\\\]*$/)) warnings.push('Unclosed italic formatting');
+            } else {
+                if (content.match(/^#+$/gm)) errors.push('Empty heading detected');
+                if (content.includes('](')) warnings.push('Possible broken link syntax');
+            }
+            
+            return {
+                valid: errors.length === 0,
+                errors,
+                warnings,
+                stats: {
+                    length: content.length,
+                    lines: content.split('\\n').length
+                }
+            };
+        }
+
+        function formatValidationResult(validation) {
+            let result = validation.valid ? '✓ Document is valid\\n\\n' : '✗ Document has errors\\n\\n';
+            
+            if (validation.errors.length > 0) {
+                result += 'Errors:\\n';
+                validation.errors.forEach(error => {
+                    result += `  • ${error}\\n`;
+                });
+                result += '\\n';
+            }
+            
+            if (validation.warnings.length > 0) {
+                result += 'Warnings:\\n';
+                validation.warnings.forEach(warning => {
+                    result += `  • ${warning}\\n`;
+                });
+                result += '\\n';
+            }
+            
+            result += `Statistics:\\n`;
+            result += `  • Length: ${validation.stats.length} characters\\n`;
+            result += `  • Lines: ${validation.stats.lines}`;
+            
+            return result;
+        }
+
+        // Sample loaders
+        function loadRtfSample() {
+            document.getElementById('rtf-input').value = `{\\\\rtf1\\\\ansi\\\\deff0 {\\\\fonttbl {\\\\f0 Times New Roman;}{\\\\f1 Courier New;}}
+{\\\\colortbl;\\\\red0\\\\green0\\\\blue0;\\\\red255\\\\green0\\\\blue0;}
+\\\\f0\\\\fs24
+{\\\\pard\\\\sa200\\\\fs32\\\\b LegacyBridge Sample Document\\\\b0\\\\par}
+
+This document demonstrates various RTF formatting features:\\\\par
+
+\\\\b Bold text\\\\b0, \\\\i italic text\\\\i0, and \\\\ul underlined text\\\\ulnone.\\\\par
+
+{\\\\cf2 This text is in red color.}\\\\par
+
+{\\\\f1 This text uses Courier New font.}\\\\par
+
+{\\\\*\\\\listtable{\\\\list\\\\listtemplateid1{\\\\listlevel\\\\levelnfc23{\\\\leveltext\\\\'01\\\\u8226 ?;}{\\\\levelnumbers;}\\\\fi-360\\\\li720}\\\\listid1}}
+{\\\\listoverridetable{\\\\listoverride\\\\listid1\\\\ls1}}
+\\\\pard\\\\ls1\\\\fi-360\\\\li720 First list item\\\\par
+\\\\pard\\\\ls1\\\\fi-360\\\\li720 Second list item\\\\par
+\\\\pard\\\\ls1\\\\fi-360\\\\li720 Third list item\\\\par
+
+\\\\pard\\\\sa200 Regular paragraph text continues here.\\\\par
+}`;
+            hideResult('rtf-result');
+        }
+
+        function loadMarkdownSample() {
+            document.getElementById('markdown-input').value = `# LegacyBridge Sample Document
+
+This document demonstrates various **Markdown** formatting features.
+
+## Text Formatting
+
+You can use **bold text**, *italic text*, and ***bold italic text***.
+
+You can also use \`inline code\` and ~~strikethrough~~ text.
+
+## Lists
+
+### Unordered List
+- First item
+- Second item
+  - Nested item
+  - Another nested item
+- Third item
+
+### Ordered List
+1. First step
+2. Second step
+3. Third step
+
+## Code Blocks
+
+\`\`\`javascript
+function convertDocument(input) {
+    const result = legacybridge.convert(input);
+    return result;
+}
+\`\`\`
+
+## Blockquotes
+
+> This is a blockquote.
+> It can span multiple lines.
+>
+> > And can be nested too.
+
+## Links and Images
+
+Visit [LegacyBridge Documentation](https://example.com/docs) for more information.
+
+![Alt text for image](https://example.com/image.png)
+
+## Tables
+
+| Feature | Status | Performance |
+|---------|--------|-------------|
+| RTF → Markdown | ✓ Complete | 41,000/sec |
+| Markdown → RTF | ✓ Complete | 20,000/sec |
+| Batch Processing | ✓ Complete | 1,800/sec |
+
+---
+
+*Built with LegacyBridge - The fastest document converter*`;
+            hideResult('markdown-result');
+        }
+
+        function clearRtfInput() {
+            document.getElementById('rtf-input').value = '';
+            hideResult('rtf-result');
+            hideStats('rtf-stats');
+        }
+
+        function clearMarkdownInput() {
+            document.getElementById('markdown-input').value = '';
+            hideResult('markdown-result');
+            hideStats('markdown-stats');
+        }
+
+        function clearValidateInput() {
+            document.getElementById('validate-input').value = '';
+            hideResult('validate-result');
+        }
+
+        function cancelBatch() {
+            showLoading('batch-loading', false);
+            showResult('batch-result', 'Batch processing cancelled.', 'error');
+        }
+
+        // Initialize with samples on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Optional: Load samples automatically
+            // loadRtfSample();
+            // loadMarkdownSample();
+        });
+    </script>
+</body>
+</html>

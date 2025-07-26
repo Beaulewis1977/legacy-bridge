@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: legacybridge-config
+data:
+  app.conf: |
+    # Application Configuration
+    server.port=3000
+    server.host=0.0.0.0
+    
+    # Security Settings
+    security.cors.enabled=true
+    security.cors.origins=https://legacybridge.example.com
+    security.rate.limit=100
+    security.rate.window=60000
+    
+    # Performance Settings
+    performance.max.connections=1000
+    performance.timeout.request=30000
+    performance.timeout.idle=120000
+    
+    # Conversion Settings
+    conversion.max.file.size=52428800
+    conversion.batch.max.files=100
+    conversion.timeout=300000
+    
+    # Logging
+    logging.level=info
+    logging.format=json
+    logging.output=stdout
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: legacybridge-secrets
+type: Opaque
+stringData:
+  database-url: "postgresql://user:pass@postgres:5432/legacybridge"
+  jwt-secret: "your-secure-jwt-secret-here"
+  api-key: "your-secure-api-key-here"

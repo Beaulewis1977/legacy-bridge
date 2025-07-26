@@ -1,0 +1,30 @@
+name: CI Pipeline
+on:
+  push:
+    branches: [ main, terragon/test-repo-connection-push-workflows ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Run basic checks
+        run: |
+          echo "Repository structure:"
+          find . -name "*.rs" -o -name "*.py" | head -10
+          echo "Build system check complete"

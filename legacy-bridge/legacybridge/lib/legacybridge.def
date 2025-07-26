@@ -1,0 +1,9 @@
+LIBRARY legacybridge 
+EXPORTS 
+   legacybridge_rtf_to_markdown 
+   legacybridge_markdown_to_rtf 
+   legacybridge_free_string 
+   legacybridge_get_last_error 
+   legacybridge_get_version 
+   legacybridge_batch_rtf_to_markdown 
+   legacybridge_batch_markdown_to_rtf 

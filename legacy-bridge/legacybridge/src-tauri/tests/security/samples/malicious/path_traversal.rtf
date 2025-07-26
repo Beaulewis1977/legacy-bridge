@@ -1,0 +1,33 @@
+{\rtf1\ansi\deff0
+\par Path traversal attempt test document:
+\par
+{\field{\*\fldinst{INCLUDETEXT "../../../etc/passwd"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "..\\..\\..\\windows\\system32\\drivers\\etc\\hosts"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "..%252f..%252f..%252fetc%252fpasswd"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "..%c0%af..%c0%af..%c0%afetc/passwd"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "../../../etc/passwd\u0000.rtf"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "C:\\Windows\\System32\\config\\sam"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "/etc/shadow"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "\\\\server\\share\\sensitive.doc"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{HYPERLINK "file:///etc/passwd"}}{\fldrslt{Local file}}}
+\par
+{\field{\*\fldinst{HYPERLINK "file://localhost/c:/windows/win.ini"}}{\fldrslt{Windows file}}}
+\par
+{\field{\*\fldinst{HYPERLINK "file:\\\\server\\share\\file.rtf"}}{\fldrslt{UNC path}}}
+\par
+{\*\fontembed ..\\..\\..\\windows\\fonts\\malicious.ttf}
+\par
+{\*\objdata ..\\..\\..\\etc\\passwd}
+\par
+{\stylesheet{\s1\snext1 ..\\..\\..\\malicious.sty;}}
+}

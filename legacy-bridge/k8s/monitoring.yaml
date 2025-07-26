@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: legacybridge
+  labels:
+    app: legacybridge
+spec:
+  selector:
+    matchLabels:
+      app: legacybridge
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-legacybridge
+data:
+  legacybridge-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "LegacyBridge Monitoring",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{app=\"legacybridge\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Response Time",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"legacybridge\"}[5m]))"
+              }
+            ]
+          },
+          {
+            "title": "Conversion Success Rate",
+            "targets": [
+              {
+                "expr": "rate(conversion_success_total{app=\"legacybridge\"}[5m]) / rate(conversion_total{app=\"legacybridge\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "CPU Usage",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{pod=~\"legacybridge-.*\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{pod=~\"legacybridge-.*\"}"
+              }
+            ]
+          },
+          {
+            "title": "Active Connections",
+            "targets": [
+              {
+                "expr": "legacybridge_active_connections"
+              }
+            ]
+          }
+        ]
+      }
+    }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: legacybridge-alerts
+spec:
+  groups:
+  - name: legacybridge
+    interval: 30s
+    rules:
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{app="legacybridge",status=~"5.."}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: High error rate detected
+        description: "Error rate is {{ $value }} for {{ $labels.instance }}"
+    
+    - alert: HighResponseTime
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="legacybridge"}[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: High response time detected
+        description: "95th percentile response time is {{ $value }}s"
+    
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{pod=~"legacybridge-.*"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Pod is crash looping
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times"
+    
+    - alert: HighMemoryUsage
+      expr: container_memory_usage_bytes{pod=~"legacybridge-.*"} / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: High memory usage detected
+        description: "Memory usage is {{ $value }} for {{ $labels.pod }}"

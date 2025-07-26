@@ -1,0 +1,67 @@
+{
+  "security": {
+    "limits": {
+      "maxFileSize": 10485760,
+      "maxTextSize": 1048576,
+      "maxNestingDepth": 50,
+      "maxBatchSize": 100,
+      "parsingTimeout": 30,
+      "maxTableDimensions": {
+        "rows": 1000,
+        "columns": 100
+      }
+    },
+    "rateLimiting": {
+      "requestsPerSecond": 10,
+      "burstSize": 20,
+      "windowSize": 1000
+    },
+    "fileSystem": {
+      "allowedExtensions": ["rtf", "md", "txt"],
+      "allowedPaths": ["$APPDATA", "$DOCUMENT"],
+      "blockAbsolutePaths": true,
+      "blockParentTraversal": true
+    },
+    "controlWords": {
+      "blocked": [
+        "object", "objdata", "objemb", "objlink", "objautlink",
+        "objsub", "objpub", "result", "pict", "shppict",
+        "field", "fldinst", "fldrslt", "datafield", "include",
+        "xe", "tc", "tcn", "bkmkstart", "bkmkend"
+      ],
+      "allowed": [
+        "rtf", "ansi", "ansicpg", "deff", "fonttbl", "f", "fnil",
+        "fcharset", "colortbl", "red", "green", "blue", "stylesheet",
+        "s", "sa", "sb", "par", "pard", "line", "page", "b", "i",
+        "ul", "strike", "v", "fs", "cf", "highlight", "sub", "super",
+        "plain", "tab", "ql", "qr", "qc", "qj", "fi", "li", "ri",
+        "sl", "slmult", "trowd", "trgaph", "trleft", "cellx", "intbl",
+        "cell", "row", "u", "uc", "nonshppict"
+      ]
+    },
+    "headers": {
+      "contentSecurityPolicy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://localhost:*; font-src 'self'; connect-src 'self' https://localhost:* http://localhost:*; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; worker-src 'none'",
+      "xContentTypeOptions": "nosniff",
+      "xFrameOptions": "DENY",
+      "xXssProtection": "1; mode=block",
+      "referrerPolicy": "strict-origin-when-cross-origin",
+      "permissionsPolicy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+      "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+    },
+    "logging": {
+      "logSecurityEvents": true,
+      "logLevel": "warn",
+      "excludeSensitiveData": true,
+      "retentionDays": 30
+    },
+    "monitoring": {
+      "enableMetrics": true,
+      "alertThresholds": {
+        "failedValidations": 100,
+        "rateLimitViolations": 50,
+        "memoryUsageMB": 500,
+        "cpuUsagePercent": 80
+      }
+    }
+  }
+}

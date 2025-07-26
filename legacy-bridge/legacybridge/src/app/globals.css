@@ -1,0 +1,434 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* LegacyBridge Brand Colors */
+    --legacy-blue-50: #eff6ff;
+    --legacy-blue-100: #dbeafe;
+    --legacy-blue-500: #3b82f6;
+    --legacy-blue-600: #2563eb;
+    --legacy-blue-700: #1d4ed8;
+    --legacy-blue-900: #1e3a8a;
+    
+    /* Accent Colors */
+    --legacy-emerald-400: #34d399;
+    --legacy-emerald-500: #10b981;
+    --legacy-amber-400: #fbbf24;
+    --legacy-amber-500: #f59e0b;
+    --legacy-red-500: #ef4444;
+    --legacy-red-600: #dc2626;
+    
+    /* Neutral Palette */
+    --legacy-slate-50: #f8fafc;
+    --legacy-slate-100: #f1f5f9;
+    --legacy-slate-200: #e2e8f0;
+    --legacy-slate-300: #cbd5e1;
+    --legacy-slate-400: #94a3b8;
+    --legacy-slate-500: #64748b;
+    --legacy-slate-600: #475569;
+    --legacy-slate-700: #334155;
+    --legacy-slate-800: #1e293b;
+    --legacy-slate-900: #0f172a;
+    
+    /* Monitoring Status Colors */
+    --status-success: #10b981;
+    --status-warning: #f59e0b;  
+    --status-error: #ef4444;
+    --status-info: #3b82f6;
+    --status-building: #8b5cf6;
+
+    /* Light Mode Theme Variables */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%; /* Very dark for maximum contrast */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 217 91% 50%; /* Darker Legacy Blue for better contrast */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 0 0% 9%; /* Very dark for maximum contrast */
+    --muted: 214 32% 91%;
+    --muted-foreground: 0 0% 25%; /* Much darker gray for 4.5:1+ contrast ratio */
+    --accent: 158 64% 52%; /* Legacy Emerald */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%; /* Legacy Red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 50%;
+    --radius: 0.75rem;
+    
+    /* Chart Colors */
+    --chart-1: 217 91% 60%; /* Blue */
+    --chart-2: 158 64% 52%; /* Emerald */
+    --chart-3: 38 92% 50%; /* Amber */
+    --chart-4: 280 65% 60%; /* Purple */
+    --chart-5: 0 84% 60%; /* Red */
+
+    /* Glassmorphism Variables */
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    --glass-blur: 10px;
+  }
+
+  .dark {
+    /* Dark Mode Theme Variables */
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%; /* Legacy Blue */
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 158 64% 52%; /* Legacy Emerald */
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%; /* Legacy Red */
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+    
+    /* Chart Colors (Dark Mode) */
+    --chart-1: 217 91% 70%; /* Lighter Blue */
+    --chart-2: 158 64% 62%; /* Lighter Emerald */
+    --chart-3: 38 92% 60%; /* Lighter Amber */
+    --chart-4: 280 65% 70%; /* Lighter Purple */
+    --chart-5: 0 84% 70%; /* Lighter Red */
+
+    /* Glassmorphism Variables (Dark) */
+    --glass-bg: rgba(30, 41, 59, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --glass-blur: 10px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography Scale */
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+  
+  h2 {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+  
+  h4 {
+    @apply text-xl font-medium;
+  }
+  
+  h5 {
+    @apply text-lg font-medium;
+  }
+  
+  h6 {
+    @apply text-base font-medium;
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism Classes */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Gradient Utilities */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-legacy-blue-500 to-legacy-blue-700;
+  }
+  
+  .gradient-success {
+    @apply bg-gradient-to-r from-legacy-emerald-400 to-legacy-emerald-500;
+  }
+  
+  .gradient-warning {
+    @apply bg-gradient-to-r from-legacy-amber-400 to-legacy-amber-500;
+  }
+  
+  .gradient-error {
+    @apply bg-gradient-to-r from-legacy-red-500 to-legacy-red-600;
+  }
+  
+  .gradient-info {
+    @apply bg-gradient-to-r from-legacy-blue-500 to-legacy-blue-600;
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-legacy-blue-600 to-legacy-blue-700 bg-clip-text text-transparent;
+  }
+
+  /* Animation Utilities */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-gradient {
+    animation: gradient 3s ease infinite;
+    background-size: 400% 400%;
+  }
+
+  /* Focus States */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-legacy-blue-500 focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* Status Indicators */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+  
+  .status-dot-success {
+    @apply bg-legacy-emerald-500;
+  }
+  
+  .status-dot-warning {
+    @apply bg-legacy-amber-500;
+  }
+  
+  .status-dot-error {
+    @apply bg-legacy-red-500;
+  }
+  
+  .status-dot-info {
+    @apply bg-legacy-blue-500;
+  }
+  
+  .status-dot-building {
+    @apply bg-purple-500 animate-pulse;
+  }
+
+  /* Card Hover Effects */
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-1;
+  }
+  
+  .hover-glow {
+    @apply transition-shadow duration-200 hover:shadow-lg hover:shadow-legacy-blue-500/20;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--legacy-slate-300)) transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-legacy-slate-300 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-legacy-slate-400;
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-legacy-slate-700;
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-legacy-slate-600;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Performance Optimizations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Beautiful Background Gradients */
+.gradient-mesh {
+  background-image: 
+    radial-gradient(at 20% 80%, rgb(59, 130, 246, 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 20%, rgb(16, 185, 129, 0.1) 0px, transparent 50%),
+    radial-gradient(at 40% 40%, rgb(139, 92, 246, 0.1) 0px, transparent 50%);
+}
+
+.gradient-mesh-dark {
+  background-image: 
+    radial-gradient(at 20% 80%, rgb(59, 130, 246, 0.05) 0px, transparent 50%),
+    radial-gradient(at 80% 20%, rgb(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(at 40% 40%, rgb(139, 92, 246, 0.05) 0px, transparent 50%);
+}
+
+/* Enhanced Glassmorphism */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.15),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.dark .glass-morphism {
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Neon Glow Effects */
+.neon-glow-blue {
+  box-shadow: 
+    0 0 20px rgba(59, 130, 246, 0.5),
+    0 0 40px rgba(59, 130, 246, 0.3),
+    0 0 60px rgba(59, 130, 246, 0.1);
+}
+
+.neon-glow-emerald {
+  box-shadow: 
+    0 0 20px rgba(16, 185, 129, 0.5),
+    0 0 40px rgba(16, 185, 129, 0.3),
+    0 0 60px rgba(16, 185, 129, 0.1);
+}
+
+.neon-glow-purple {
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.5),
+    0 0 40px rgba(139, 92, 246, 0.3),
+    0 0 60px rgba(139, 92, 246, 0.1);
+}
+
+/* Smooth Transitions */
+.transition-all-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animated Background */
+.animated-gradient-bg {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Beautiful Card Styles */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.card-shine:hover::before {
+  left: 100%;
+}
+
+/* Accessibility Focus Styles */
+.focus-visible-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-legacy-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+/* Loading Shimmer Effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+  transform: translateX(-100%);
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

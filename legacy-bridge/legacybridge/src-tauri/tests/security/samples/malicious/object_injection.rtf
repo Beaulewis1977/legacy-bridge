@@ -1,0 +1,33 @@
+{\rtf1\ansi\deff0
+\par This document contains various object embedding attempts:
+\par
+{\object\objemb\objw2880\objh1440
+{\*\objclass Word.Document.12}
+{\*\objdata 
+01050000020000000B0000004D53576F72642E446F63756D656E742E31320000
+00000000000000000000F000000D0000004D6963726F736F6674204F66666963
+6520576F7264204F626A65637400000000000000000000000000000000000000
+}}
+\par
+{\field{\*\fldinst{INCLUDETEXT "C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{DDE "C:\\\\Windows\\\\System32\\\\cmd.exe" "/c calc.exe"}}{\fldrslt{Error}}}
+\par
+{\field{\*\fldinst{HYPERLINK "file:///etc/passwd"}}{\fldrslt{Click here}}}
+\par
+{\pict\wmetafile8\picw2880\pich1440\picwgoal1440\pichgoal720
+\bin 4D5A900003000000040000FFFF0000B80000000000000040000000000000
+00000000000000000000000000000000000000000000000000000000800000
+0E1FBA0E00B409CD21B8014CCD21546869732070726F6772616D2063616E6E
+6F742062652072756E20696E20444F53206D6F64652E0D0D0A240000000000
+}
+\par
+{\*\datastore\data 
+<script>alert('XSS')</script>
+<object data="javascript:alert(1)"></object>
+}
+\par
+{\*\template C:\\malicious\\template.dot}
+\par
+{\result Hidden malicious content \object\objdata}
+}
