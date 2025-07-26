@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = ["shell-open", "fs-all", "path-all"], optional = true }
+tauri = { version = "1", features = ["clipboard-write-text", "dialog-open", "dialog-save", "fs-create-dir", "fs-exists", "fs-read-dir", "fs-read-file", "fs-write-file", "process-exit", "system-tray", "window-center", "window-close", "window-hide", "window-maximize", "window-minimize", "window-request-user-attention", "window-set-cursor-icon", "window-set-cursor-visible", "window-set-decorations", "window-set-focus", "window-set-fullscreen", "window-set-max-size", "window-set-min-size", "window-set-resizable", "window-set-size", "window-set-title", "window-show", "window-start-dragging", "window-unmaximize", "window-unminimize"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1.0"
